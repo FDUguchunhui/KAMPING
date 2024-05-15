@@ -1,14 +1,23 @@
 import pandas as pd
-import argparse
+from knext.utils import FileNotFound
+from pathlib import Path
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Parse TSV file')
-    parser.add_argument('input', type=str, help='Input TSV file')
-    parser.add_argument('output', type=str, help='Output TSV file')
-    args = parser.parse_args()
+class MPIParser:
 
-    # Load the TSV file into a DataFrame
-    df = pd.read_csv(args.input, sep='\t')
+    def parse(self, file: str):
+        # the input file should be the output of mixed command
+        if not Path(file).exists():
+            raise FileNotFound(f'File {file} not found!')
+
+        df = pd.read_csv(file, sep='\t')
+
+        # remove rows with type "maplink", "GErel", and "PPrel"
+        df = df[~df['type'].isin(['maplink', 'GErel', 'PPrel'])]
+
+        #
+
+
+def expand_EC_relation(df: pd.DataFrame):
 
     # Create a list to store the new rows
     new_rows = []
@@ -30,6 +39,5 @@ if __name__ == '__main__':
 
     # Create a new DataFrame from the list of new rows
     new_df = pd.concat(new_rows, axis=1).transpose()
-
-    # Write the new DataFrame to a new TSV file
-    new_df.to_csv(args.output, sep='\t', index=False)
+    new_df.reset_index(inplace=True, drop=True)
+    return new_df

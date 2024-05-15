@@ -1,14 +1,13 @@
 import pandas as pd
 import argparse
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Parse TSV file')
-    parser.add_argument('input', type=str, help='Input TSV file')
-    parser.add_argument('output', type=str, help='Output TSV file')
-    args = parser.parse_args()
+def expand_by_intermidate(input: str, output: str):
+    '''
+    This function takes a TSV file with columns "type", "value", and "name" where
+    '''
 
     # Load the TSV file into a DataFrame
-    df = pd.read_csv(args.input, sep='\t')
+    df = pd.read_csv(input, sep='\t')
 
     # Create a list to store the new rows
     new_rows = []
@@ -35,4 +34,12 @@ if __name__ == '__main__':
 
 
     # Write the new DataFrame to a new TSV file
-    new_df.to_csv(args.output, sep='\t', index=False)
+    new_df.to_csv(output, sep='\t', index=False)
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Parse TSV file')
+    parser.add_argument('input', type=str, help='Input TSV file')
+    parser.add_argument('output', type=str, help='Output TSV file')
+    args = parser.parse_args()
+
+    expand_by_intermidate(args.input, args.output)

@@ -217,25 +217,6 @@ class GenesInteractionParser:
         # interaction in the final dataframe, but these are not meant to interact
         return df2
 
-    def _replace_with_cliques(self, df, cliquedf, df_out):
-        '''
-        This function replaces the edges in df with the cliques in cliquedf
-        '''
-        # aggregating the 'type', 'value', and 'name' columns in df_out for each
-        # unique pair of 'entry1' and 'entry2',
-        #  joining the aggregated values into a single string,
-        # and then merging this with cliquedf while removing any duplicates.
-        dft = df_out.groupby(['entry1', 'entry2'])['type'].apply(list).reset_index()
-        dfv = df_out.groupby(['entry1', 'entry2'])['value'].apply(list).reset_index()
-        dfn = df_out.groupby(['entry1', 'entry2'])['name'].apply(list).reset_index()
-        dfx = dft
-        dfx['type'] = dft['type'].transform(','.join)
-        dfx['value'] = dfv['value'].transform(','.join)
-        dfx['name'] = dfn['name'].transform(','.join)
-        # Ensures independently parsed cliques overwrite the cliques, which inherited neighbor weights
-        xdf = pd.concat([dfx, cliquedf]).drop_duplicates(subset = ['entry1', 'entry2'], keep = 'last')
-        return  xdf
-
     def _add_names(self, df):
         df['entry1_name'] = df.entry1.map(self.names_dictionary)
         df['entry2_name'] = df.entry2.map(self.names_dictionary)
@@ -271,10 +252,7 @@ class GenesInteractionParser:
         if self.graphics:
             _parse_graphics(df_out, self.wd, pathway)
 
-        xdf = self._replace_with_cliques(df, cliquedf, df_out)
-
-
-
+        xdf = _replace_with_cliques(cliquedf, df_out)
 
         # Check for compounds or undefined nodes
         has_compounds_or_undefined = not xdf[(xdf['entry1'].str.startswith('cpd:')) | (xdf['entry2'].str.startswith('cpd:')) | (xdf['entry1'].str.startswith('undefined')) | (xdf['entry2'].str.startswith('undefined'))].empty
@@ -308,7 +286,24 @@ def _parse_graphics(df_out, wd, pathway):
     with open(wd / '{}_graphics.txt'.format(pathway), 'w') as outfile:
         outfile.write(json_dict)
 
-
+def _replace_with_cliques(cliquedf, df_out):
+    '''
+    This function replaces the edges in df with the cliques in cliquedf
+    '''
+    # aggregating the 'type', 'value', and 'name' columns in df_out for each
+    # unique pair of 'entry1' and 'entry2',
+    #  joining the aggregated values into a single string,
+    # and then merging this with cliquedf while removing any duplicates.
+    dft = df_out.groupby(['entry1', 'entry2'])['type'].apply(list).reset_index()
+    dfv = df_out.groupby(['entry1', 'entry2'])['value'].apply(list).reset_index()
+    dfn = df_out.groupby(['entry1', 'entry2'])['name'].apply(list).reset_index()
+    dfx = dft
+    dfx['type'] = dft['type'].transform(','.join)
+    dfx['value'] = dfv['value'].transform(','.join)
+    dfx['name'] = dfn['name'].transform(','.join)
+    # Ensures independently parsed cliques overwrite the cliques, which inherited neighbor weights
+    xdf = pd.concat([dfx, cliquedf]).drop_duplicates(subset = ['entry1', 'entry2'], keep = 'last')
+    return  xdf
 
 
 

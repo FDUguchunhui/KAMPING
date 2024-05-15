@@ -157,6 +157,16 @@ def convert(input_data, species, graphics, results: bool = False, uniprot: bool 
     genes_convert(species, input_data, wd=wd,  graphics=graphics,
                   uniprot=uniprot, unique=unique, verbose=verbose)
 
+    @cli.command()
+    @click.argument('file')
+    def from_mixed_to_mpi(file: str):
+        """
+        Converts the mixed file to metabolite-protein interactions.
+        """
+        # remove the maplink, GErel, and PPrel
+        parser.expand_by_intermidate()
+
+
 
 if __name__ == '__main__':
     cli()
