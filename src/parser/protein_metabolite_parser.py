@@ -3,6 +3,16 @@ from pathlib import Path
 import typer
 
 class proteinMetabliteParser:
+    '''
+    Create a parser to convert the output of the mixed command into a
+    metabolite-protein interaction file.
+
+    usage:
+    parser = proteinMetabliteParser()
+    parser.parse(file='mixed.tsv', wd='.')
+
+    return: None
+    '''
     def __init__(self, verbose: bool = False):
         self.verbose = verbose
 

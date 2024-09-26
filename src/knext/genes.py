@@ -48,6 +48,16 @@ class GenesInteractionParser:
         pathway_link = self.root.get('link')
 
         d = []
+
+        # Parse the relation and subtype elements
+        # this will expand entry with subentry into multiple rows
+        # for example
+        # <relation entry1="20" entry2="37" type="PPrel">
+        # <subtype name="activation" value="--&gt;"/>
+        # <subtype name="indirect effect" value="..&gt;"/>
+        # will be expanded into two rows
+        # 20 37 PPrel activation --&gt;
+        # 20 37 PPrel indirect effect ..&gt;
         for relation in self.root.findall('relation'):
             for subtype in relation:
                 d1=relation.attrib
@@ -114,44 +124,20 @@ class GenesInteractionParser:
 
 
     def _parse_clique(self, df):
-        # Parse the cliques seperate so they won't inherit neighbor weights
-        # Allows for custom weights so user knows which are customly parsed
-        clique_edges = []
-        for index, rows in df.iterrows():
-            if len(rows['entry1']) > 1:
-                cliques = [x for x in combinations(rows['entry1'], 2)]
-                cliques1 = [tup + ('type 2', 'undirectional', 'clique') for tup in cliques]
-                clique_edges.append(cliques1)
-            if len(rows['entry2']) > 1:
-                cliques = [x for x in combinations(rows['entry2'], 2)]
-                cliques2 = [tup + ('type 2', 'undirectional', 'clique') for tup in cliques]
-                clique_edges.append(cliques2)
-        clique2df = [e for edge in clique_edges for e in edge]
-        cliquedf = pd.DataFrame.from_records(clique2df, columns = ['entry1', 'entry2', 'type', 'value', 'name'])
 
         edges = []
-        for index, rows in df.iterrows():
-            lists = rows['entry1'] + rows['entry2']
-            # Cliques here inherit neighbor weights, but will be overwritten by above
-            cliques = [x for x in combinations(lists, 2)]
-            if self.graphics:
-                network = [tup + (rows['types'], rows['value'], rows['name'], rows['pos1'], rows['pos2']) for tup in cliques]
-            else:
-                network = [tup + (rows['types'], rows['value'], rows['name']) for tup in cliques]
-            edges.append(network)
+        for index, row in df.iterrows():
+            entry1_list = row.iloc[0]
+            entry2_list = row.iloc[1]
+            for entry1 in entry1_list:
+                for entry2 in entry2_list:
+                    edges.append([entry1, entry2]  + row[2:].tolist())
 
-        # This removes edges which contain +p (phosphorylation) these oftentimes
-        # overwrite important weight attributes while providing no vital information
-        # edges2df = [e for edge in edges for e in edge if '+p' not in e and '-p' not in e]
-
-        # Standard line for obtaining a dataframe of edges
-        edges2df = [e for edge in edges for e in edge]
-        # Create pandas DF from edges
         if self.graphics:
-            df_out = pd.DataFrame.from_records(edges2df, columns = ['entry1', 'entry2', 'type', 'value', 'name', 'pos1', 'pos2'])
+            df_out = pd.DataFrame(edges, columns = ['entry1', 'entry2', 'type', 'value', 'name', 'pos1', 'pos2'])
         else:
-            df_out = pd.DataFrame.from_records(edges2df, columns = ['entry1', 'entry2', 'type', 'value', 'name'])
-        return cliquedf, df_out
+            df_out = pd.DataFrame(edges, columns = ['entry1', 'entry2', 'type', 'value', 'name'])
+        return df_out
 
     def _propagate_compounds(self, xdf):
         # These next series of steps are for propagating compounds and undefined nodes
@@ -246,35 +232,29 @@ class GenesInteractionParser:
             typer.echo(typer.style(f'Now parsing: {title}...', fg=typer.colors.GREEN, bold=False))
         df = self._get_edges()
 
-        cliquedf, df_out = self._parse_clique(df)
+        df_out = self._parse_clique(df)
 
         if self.graphics:
             _parse_graphics(df_out, self.wd, pathway)
 
-        # check which edges was introduced by cliques and remove them
-        # clique are generated through multi-to-multi relationship
-        # eg [hsa:001, hsa:002, hsa:003], [hsa:004, hsa:005, hsa:006]
-        xdf = _replace_with_cliques(cliquedf, df_out)
-        xdf = xdf[xdf.name != 'clique']
-
         # Check for compounds or undefined nodes
-        has_compounds_or_undefined = not xdf[(xdf['entry1'].str.startswith('cpd:')) | (xdf['entry2'].str.startswith('cpd:')) | (xdf['entry1'].str.startswith('undefined')) | (xdf['entry2'].str.startswith('undefined'))].empty
+        has_compounds_or_undefined = not df_out[(df_out['entry1'].str.startswith('cpd:')) | (df_out['entry2'].str.startswith('cpd:')) | (df_out['entry1'].str.startswith('undefined')) | (df_out['entry2'].str.startswith('undefined'))].empty
 
         # if not mixed, remove "path" entries and propagate compounds
         if not self.mixed:
             # remove edge with "path" entries
-            xdf = xdf[(~xdf['entry1'].str.startswith('path')) &
-                      (~xdf['entry2'].str.startswith('path'))]
+            df_out = df_out[(~df_out['entry1'].str.startswith('path')) &
+                      (~df_out['entry2'].str.startswith('path'))]
             if has_compounds_or_undefined:
-                xdf = self._propagate_compounds(xdf)
+                df_out = self._propagate_compounds(df_out)
                 # add gene names if requested
                 if self.names:
-                    xdf['entry1_name'] = xdf.entry1.map(self.names_dictionary)
-                    xdf['entry2_name'] = xdf.entry2.map(self.names_dictionary)
+                    df_out['entry1_name'] = df_out.entry1.map(self.names_dictionary)
+                    df_out['entry2_name'] = df_out.entry2.map(self.names_dictionary)
         else:
             if self.names:
-                xdf = self._add_names(xdf)
-        xdf.to_csv(self.wd / '{}.tsv'.format(pathway), sep = '\t', index = False)
+                df_out = self._add_names(df_out)
+        df_out.to_csv(self.wd / '{}.tsv'.format(pathway), sep = '\t', index = False)
 
 
 def _parse_graphics(df_out, wd, pathway):
