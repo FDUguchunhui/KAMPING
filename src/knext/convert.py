@@ -13,7 +13,9 @@ from pathlib import Path
 import pandas as pd
 import typer
 
-from knext.utils import UP, NCBI, FileNotFound
+from knext.utils import UP, NCBI
+
+
 
 pd.options.mode.chained_assignment = None
 app = typer.Typer()
@@ -41,7 +43,7 @@ class Converter:
         # extract the filename part of self.input_data
         graphics_file =pathlib.PurePath(self.graphics, Path(self.input_data).stem + '_graphics.txt')
         if not Path(graphics_file).exists():
-            raise FileNotFound(f'Graphics file {graphics_file} not found!')
+            raise FileNotFoundError(f'Graphics file {graphics_file} not found!')
         pos = open(graphics_file)
         d = json.loads(pos.read())
         conv_dict = {}
@@ -149,8 +151,8 @@ def genes_convert(species, input_data, wd: Path, graphics=None,
                                       unique=unique, uniprot=uniprot,
                                       verbose=verbose)
                 converter.convert_file()
-            except FileNotFound as e:
-                typer.echo(typer.style(e.message, fg=typer.colors.RED, bold=True))
+            except FileNotFoundError as e:
+                typer.echo(typer.style(e, fg=typer.colors.RED, bold=True))
                 continue
     else:
         converter = Converter(species, input_data, wd, graphics=graphics,

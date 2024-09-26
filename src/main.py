@@ -11,9 +11,9 @@ import typer
 import click
 from pathlib import Path
 
-from .knext.convert import genes_convert
-from .knext.call import kgml
-from .knext.genes import genes_parser
+from knext.convert import genes_convert
+from knext.call import kgml
+from knext.genes import genes_parser
 
 @click.group()
 def cli():
@@ -56,10 +56,6 @@ def parse(input_data: str, results: str, mixed:bool, unique: bool, graphics: boo
     """
     if verbose:
         typer.echo(typer.style("Verbose mode enabled", fg=typer.colors.GREEN))
-
-    if not Path(input_data).exists():
-        typer.echo('Please input a directory of KGML files or an individual KGML file...')
-        sys.exit()
 
     # Check if the results is provided
     if not results:
@@ -139,10 +135,6 @@ def convert(input_data, species, graphics, results: bool = False, uniprot: bool 
     if verbose:
         typer.echo(typer.style("Verbose mode enabled", fg=typer.colors.GREEN))
 
-    if not Path(input_data).exists():
-        typer.echo('Please input a directory of output files or an individual output file from the genes command...')
-        sys.exit()
-
     # Check if the results is provided
     if not results:
         wd = Path.cwd()
@@ -157,14 +149,29 @@ def convert(input_data, species, graphics, results: bool = False, uniprot: bool 
     genes_convert(species, input_data, wd=wd,  graphics=graphics,
                   uniprot=uniprot, unique=unique, verbose=verbose)
 
-    @cli.command()
-    @click.argument('file')
-    def from_mixed_to_mpi(file: str):
-        """
-        Converts the mixed file to metabolite-protein interactions.
-        """
-        # remove the maplink, GErel, and PPrel
-        parser.expand_by_intermidate()
+    # @cli.command()
+    # @click.argument('file')
+    # @click.option('-r', '--results', required = False)
+    # def from_mixed_to_mpi(file: str, results: str = None):
+    #     """
+    #     Converts the mixed file to metabolite-protein interactions.
+    #     """
+    #     # remove the maplink, GErel, and PPrel
+    #     df = MPIParser().parse(file)
+    #     # export the DataFrame to a TSV file
+    #     if results is not None:
+    #         results = Path(results)
+    #         if results.exists() == False:
+    #             typer.echo(f'Directory {results} does not exist or is invalid. Please input a valid directory...')
+    #             sys.exit()
+    #         else:
+    #             df.to_csv(results / 'mpi.tsv', sep='\t', index=False)
+    #     else:
+    #         wd = Path.cwd()
+    #         results = wd / 'kgml_{}'.format(species)
+    #         typer.echo(f'No output directory provided. All files will be saved to:\n{results}')
+    #         results.mkdir(exist_ok = True)
+    #         df.to_csv(results / 'mpi.tsv', sep='\t', index=False)
 
 
 

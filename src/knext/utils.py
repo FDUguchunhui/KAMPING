@@ -171,8 +171,3 @@ def NCBI(species):
         else:
             d[key].append(value)
     return d
-
-class FileNotFound(Exception):
-    def __init__(self, message):
-        self.message = message
-        super().__init__(self.message)

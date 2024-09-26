@@ -17,7 +17,6 @@ from itertools import combinations
 import xml.etree.ElementTree as ET
 from collections import defaultdict
 from knext import utils
-from knext.utils import FileNotFound
 
 
 
@@ -68,7 +67,7 @@ class GenesInteractionParser:
         df=pd.DataFrame(edgelist)
         if df.empty:
             # throw error if no edges are found
-            raise FileNotFound(f'ERROR: File "{self.input_data}" cannot be parsed.\nVisit {pathway_link} for pathway details.\nThere are likely no edges in which to parse...')
+            raise FileNotFoundError(f'ERROR: File "{self.input_data}" cannot be parsed.\nVisit {pathway_link} for pathway details.\nThere are likely no edges in which to parse...')
 
         df=df[0].str.split("\t", expand=True).rename({0: 'entry1',1: 'entry2',
                                                       2: 'types', 3:'name',
@@ -252,23 +251,27 @@ class GenesInteractionParser:
         if self.graphics:
             _parse_graphics(df_out, self.wd, pathway)
 
+        # check which edges was introduced by cliques and remove them
+        # clique are generated through multi-to-multi relationship
+        # eg [hsa:001, hsa:002, hsa:003], [hsa:004, hsa:005, hsa:006]
         xdf = _replace_with_cliques(cliquedf, df_out)
+        xdf = xdf[xdf.name != 'clique']
 
         # Check for compounds or undefined nodes
         has_compounds_or_undefined = not xdf[(xdf['entry1'].str.startswith('cpd:')) | (xdf['entry2'].str.startswith('cpd:')) | (xdf['entry1'].str.startswith('undefined')) | (xdf['entry2'].str.startswith('undefined'))].empty
 
+        # if not mixed, remove "path" entries and propagate compounds
         if not self.mixed:
             # remove edge with "path" entries
             xdf = xdf[(~xdf['entry1'].str.startswith('path')) &
                       (~xdf['entry2'].str.startswith('path'))]
             if has_compounds_or_undefined:
-
                 xdf = self._propagate_compounds(xdf)
-                xdf = xdf[xdf.name != 'clique']
+                # add gene names if requested
                 if self.names:
                     xdf['entry1_name'] = xdf.entry1.map(self.names_dictionary)
+                    xdf['entry2_name'] = xdf.entry2.map(self.names_dictionary)
         else:
-            xdf = xdf[xdf.name != 'clique']
             if self.names:
                 xdf = self._add_names(xdf)
         xdf.to_csv(self.wd / '{}.tsv'.format(pathway), sep = '\t', index = False)
@@ -320,8 +323,8 @@ def genes_parser(input_data: str, wd: Path, mixed:bool = False, unique: bool = F
                                              unique=unique, graphics=graphics, names=names,
                                              verbose=verbose)
                 gip.genes_file()
-            except FileNotFound as e:
-                typer.echo(typer.style(e.message, fg=typer.colors.RED, bold=True))
+            except FileNotFoundError as e:
+                typer.echo(typer.style(e, fg=typer.colors.RED, bold=True))
                 continue
     else:
         gip = GenesInteractionParser(input_data, wd, mixed=mixed,

@@ -5,7 +5,9 @@ description = "Kyoto Encylopedia of Genes and Genomes Markup Language File parse
 authors = ["Everest Uriel Castaneda <everest_castaneda1@baylor.edu>"]
 readme = "README.rst"
 license = "LICENSE"
-packages = [{include = "knext", from = "src"}]
+packages = [{include = "knext", from = "src"},
+    {include='parser', from='src'},
+    {include='src'}]
 
 [tool.poetry.scripts]
 knext = "src.__main__:cli"
