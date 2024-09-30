@@ -1,0 +1,106 @@
+<?xml version="1.0"?>
+<!DOCTYPE pathway SYSTEM "https://www.kegg.jp/kegg/xml/KGML_v0.7.2_.dtd">
+<!-- An artificial pathway for testing purpose-->
+<pathway name="path:hsa00010" org="hsa" number="00010"
+         title="Glycolysis / Gluconeogenesis"
+         image="https://www.kegg.jp/kegg/pathway/hsa/hsa00010.png"
+         link="https://www.kegg.jp/kegg-bin/show_pathway?hsa00010">
+
+    <!-- ECrel -->
+    <entry id="73" name="hsa:130589" type="gene" reaction="rn:R01602"
+           link="https://www.kegg.jp/dbget-bin/www_bget?hsa:130589">
+        <graphics name="GALM, BLOCK25, GALAC4, GLAT, HEL-S-63p, IBD1" fgcolor="#000000" bgcolor="#BFFFBF"
+                  type="rectangle" x="173" y="268" width="46" height="17"/>
+    </entry>
+    <entry id="74" name="hsa:2645" type="gene" reaction="rn:R01786"
+           link="https://www.kegg.jp/dbget-bin/www_bget?hsa:2645">
+        <graphics name="GCK, FGQTL3, GK, GLK, HHF3, HK4, HKIV, HXKP, LGLK, MODY2, PNDM1" fgcolor="#000000" bgcolor="#BFFFBF"
+                  type="rectangle" x="219" y="239" width="46" height="17"/>
+    </entry>
+    <entry id="90" name="cpd:C00267" type="compound"
+           link="https://www.kegg.jp/dbget-bin/www_bget?C00267">
+        <graphics name="C00267" fgcolor="#000000" bgcolor="#FFFFFF"
+                  type="circle" x="173" y="228" width="8" height="8"/>
+    </entry>
+
+    <relation entry1="73" entry2="74" type="ECrel">
+        <subtype name="compound" value="90"/>
+    </relation>
+
+    <!-- PPrel -->
+    <entry id="173" name="hsa:6794" type="gene"
+           link="https://www.kegg.jp/dbget-bin/www_bget?hsa:6794">
+        <graphics name="STK11, LKB1, PJS, hLKB1" fgcolor="#000000" bgcolor="#BFFFBF"
+                  type="rectangle" x="457" y="182" width="46" height="17"/>
+    </entry>
+    <entry id="10" name="hsa:100132074 hsa:2308 hsa:2309 hsa:4303" type="gene"
+           link="https://www.kegg.jp/dbget-bin/www_bget?hsa:100132074+hsa:2308+hsa:2309+hsa:4303">
+        <graphics name="FOXO6..." fgcolor="#000000" bgcolor="#BFFFBF"
+                  type="rectangle" x="693" y="380" width="46" height="17"/>
+    </entry>
+    <entry id="28" name="hsa:23236 hsa:5330 hsa:5331 hsa:5332" type="gene"
+           link="https://www.kegg.jp/dbget-bin/www_bget?hsa:23236+hsa:5330+hsa:5331+hsa:5332">
+        <graphics name="PLCB1, DEE12, EIEE12, PI-PLC, PLC-154, PLC-I, PLC-beta-1, PLC154, PLCB1A, PLCB1B..." fgcolor="#000000" bgcolor="#BFFFBF"
+                  type="rectangle" x="285" y="452" width="46" height="17"/>
+    </entry>
+    <entry id="16" name="hsa:163688 hsa:51806 hsa:801 hsa:805 hsa:808 hsa:810 hsa:91860" type="gene"
+           link="https://www.kegg.jp/dbget-bin/www_bget?hsa:163688+hsa:51806+hsa:801+hsa:805+hsa:808+hsa:810+hsa:91860">
+        <graphics name="CALML6, CAGLP..." fgcolor="#000000" bgcolor="#BFFFBF"
+                  type="rectangle" x="498" y="430" width="46" height="17"/>
+    </entry>
+    <entry id="24" name="cpd:C08412" type="compound"
+           link="https://www.kegg.jp/dbget-bin/www_bget?C08412">
+        <graphics name="C08412" fgcolor="#000000" bgcolor="#FFFFFF"
+                  type="circle" x="1583" y="658" width="8" height="8"/>
+    </entry>
+
+    <relation entry1="173" entry2="10" type="PPrel">
+        <subtype name="activation" value="--&gt;"/>
+        <subtype name="phosphorylation" value="+p"/>
+    </relation>
+    <relation entry1="28" entry2="16" type="PPrel">
+        <subtype name="compound" value="24"/>
+    </relation>
+
+    <!-- GErel -->
+    <entry id="76" name="hsa:100132074 hsa:2308 hsa:2309 hsa:4303" type="gene"
+           link="https://www.kegg.jp/dbget-bin/www_bget?hsa:100132074+hsa:2308+hsa:2309+hsa:4303">
+        <graphics name="FOXO6..." fgcolor="#000000" bgcolor="#BFFFBF"
+                  type="rectangle" x="837" y="408" width="46" height="17"/>
+    </entry>
+    <entry id="82" name="hsa:85417 hsa:891 hsa:9133" type="gene"
+           link="https://www.kegg.jp/dbget-bin/www_bget?hsa:85417+hsa:891+hsa:9133">
+        <graphics name="CCNB3, CYCB3..." fgcolor="#000000" bgcolor="#BFFFBF"
+                  type="rectangle" x="1070" y="78" width="46" height="17"/>
+    </entry>
+    <relation entry1="76" entry2="82" type="GErel">
+        <subtype name="expression" value="--&gt;"/>
+    </relation>
+
+    <!-- maplink -->
+    <entry id="67" name="hsa:5236 hsa:55276" type="gene" reaction="rn:R00959"
+           link="https://www.kegg.jp/dbget-bin/www_bget?hsa:5236+hsa:55276">
+        <graphics name="PGM1, CDG1T, GSD14..." fgcolor="#000000" bgcolor="#BFFFBF"
+                  type="rectangle" x="483" y="178" width="46" height="17"/>
+    </entry>
+    <entry id="47" name="path:hsa00500" type="map"
+           link="https://www.kegg.jp/dbget-bin/www_bget?hsa00500">
+        <graphics name="Starch and sucrose metabolism" fgcolor="#000000" bgcolor="#FFFFFF"
+                  type="roundrectangle" x="484" y="76" width="110" height="34"/>
+    </entry>
+    <entry id="88" name="cpd:C00103" type="compound"
+           link="https://www.kegg.jp/dbget-bin/www_bget?C00103">
+        <graphics name="C00103" fgcolor="#000000" bgcolor="#FFFFFF"
+                  type="circle" x="483" y="143" width="8" height="8"/>
+    </entry>
+    <relation entry1="67" entry2="47" type="maplink">
+        <subtype name="compound" value="88"/>
+    </relation>
+
+    <!-- Reaction -->
+    <reaction id="42" name="rn:R00710" type="reversible">
+        <substrate id="105" name="cpd:C00084"/>
+        <product id="45" name="cpd:C00033"/>
+    </reaction>
+
+</pathway>

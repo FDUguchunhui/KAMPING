@@ -50,6 +50,15 @@ def graphics_dict(root):
     return graphics_dict
 
 def names_dict(root, organism, conversion_dictionary):
+    '''
+    The `names_dict` function parses the names in the KEGG API XML file for the given root. It does the following:
+        1. Iterates through the `relation` elements in the XML to collect `entry1` and `entry2` attributes.
+        2. Combines these entries and maps them using the provided `conversion_dictionary`.
+        3. For each unique entry, it fetches additional information from the KEGG API based on the type of entry (gene, compound, or pathway).
+        4. Constructs a dictionary (`dd`) where keys are the entries and values are their corresponding names or descriptions fetched from the KEGG API.
+
+This function helps in mapping KEGG entries to their human-readable names or descriptions.
+    '''
     # d = conv_dict_unique(root)
     # d = conv_dict(root)
     e1 = []
@@ -138,36 +147,25 @@ def _parse_entries(root):
     return entry_id, entry_name, entry_type
 
 
-def UP(species):
-    url = 'http://rest.kegg.jp/conv/%s/uniprot'
+def get_conversion_dictionary(species, target):
+    '''
+    Convert KEGG gene IDs to either NCBI gene IDs or UniProt IDs.
+    '''
+    if target == 'uniprot':
+        url = 'http://rest.kegg.jp/conv/%s/uniprot'
+    elif target == 'ncbi':
+        url = 'http://rest.kegg.jp/conv/%s/ncbi-geneid'
     response = request.urlopen(url % species).read().decode('utf-8')
     response = response.rstrip().rsplit('\n')
-    entrez = []
+    kegg = []
     uniprot = []
     for resp in response:
         uniprot.append(resp.rsplit()[0])
-        entrez.append(resp.rsplit()[1])
-    d = {}
-    for key, value in zip(entrez, uniprot):
-        if key not in d:
-            d[key] = [value]
-        else:
-            d[key].append(value)
-    return d
-
-def NCBI(species):
-    url = 'http://rest.kegg.jp/conv/%s/ncbi-geneid'
-    response = request.urlopen(url % species).read().decode('utf-8')
-    response = response.rstrip().rsplit('\n')
-    ncbi = []
-    kegg = []
-    for resp in response:
-        ncbi.append(resp.rsplit()[0])
         kegg.append(resp.rsplit()[1])
     d = {}
-    for key, value in zip(kegg, ncbi):
+    for key, value in zip(kegg, uniprot):
         if key not in d:
-            d[key] = value
+            d[key] = [value]
         else:
             d[key].append(value)
     return d
