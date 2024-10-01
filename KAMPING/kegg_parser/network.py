@@ -5,72 +5,32 @@
 @desc: File for obtaining gene-only pathways
 """
 
-import re
 import json
 from typing import Union, Literal
 
 import typer
-import numpy as np
 import pandas as pd
 import networkx as nx
-from pathlib import Path
-import urllib.request as request
-from itertools import combinations
 import xml.etree.ElementTree as ET
-from collections import defaultdict
 from KAMPING.kegg_parser import utils
 from KAMPING.kegg_parser import convert
 from KAMPING.kegg_parser import protein_metabolite_parser
 
 
 class InteractionParser():
-    """
-   A class to parse gene interactions from KGML files.
 
-   Attributes:
-   ----------
-   input_data : str
-       Path to the input KGML file.
-   mixed : bool
-       Whether to include mixed interactions.
-   unique : bool
-       Whether to ensure unique interactions.
-   id_conversion : Union[None, Literal['uniprot', 'ncbi']]
-       Type of ID conversion to apply.
-   names : bool
-       Whether to include human-readable names.
-   verbose : bool
-       Whether to print verbose output.
-   """
 
     def __init__(self,
                  input_data: str,
                  type: Literal['gene-only', 'MPI', 'original'],
                  unique: bool = False,
-                 graphics: bool = False,
-                 id_conversion: Union[None | Literal['uniprot', 'ncbi']] = None,
+                 id_conversion: Union[Literal['uniprot', 'ncbi'], None] = None,
                  names: bool = False,
                  verbose: bool = False):
-        """
-      Initializes the GenesInteractionParser with the given parameters.
+        '''
+        Initialize the GenesInteractionParser object
 
-      Parameters:
-      ----------
-      input_data : str
-          Path to the input KGML file
-       type : Literal['gene-only', 'MPI', 'original']
-            Type of interaction to parse
-      unique : bool, optional
-          Whether to ensure unique interactions (default is False).
-      graphics : bool, optional
-          Whether to include graphical information (default is False).
-      id_conversion : Union[None, Literal['uniprot', 'ncbi']], optional
-          Type of ID conversion to apply (default is None).
-      names : bool, optional
-          Whether to include human-readable names (default is False).
-      verbose : bool, optional
-          Whether to print verbose output (default is False).
-      """
+        '''
 
         self.id_conversion = id_conversion
         self.input_data = input_data
@@ -267,44 +227,4 @@ class InteractionParser():
 
         return df_out
 
-def parse_pathway(input_data: str, wd: str,
-                  type: Literal['gene-only', 'MPI', 'original'], unique: bool = False,
-                  id_conversion: Union[None | Literal['unprot', 'ncbi']] = None,
-                  names: bool = False, verbose: bool = False):
-    '''
-    Converts a folder of KGML files or a single KGML file into a weighted
-    edgelist of genes that can be used in graph analysis.
-    '''
 
-    wd = Path(wd)
-    # create the output directory if it does not exist
-    wd.mkdir(parents=True, exist_ok=True)
-
-    if Path(input_data).is_dir():
-        for file in Path(input_data).glob('*.xml'):
-            try:
-                gip = InteractionParser(type=type, input_data=file,
-                                        id_conversion=id_conversion,
-                                        unique=unique, names=names,
-                                        verbose=verbose)
-                df_out = gip.parse_file()
-                df_out.to_csv(wd / f'{file.stem}.tsv', sep='\t', index=False)
-            except FileNotFoundError as e:
-                typer.echo(typer.style(e, fg=typer.colors.RED, bold=True))
-                continue
-    else:
-        gip = InteractionParser(type=type,
-                                input_data=input_data,
-                                id_conversion=id_conversion,
-                                unique=unique, names=names,
-                                verbose=verbose)
-        df_out = gip.parse_file()
-        df_out.to_csv(wd / f'{Path(input_data).stem}.tsv', sep='\t', index=False)
-
-
-if __name__ == '__main__':
-    # for test
-    output_df = parse_pathway('data/kgml_hsa/hsa00010.xml',
-                              id_conversion='uniprot',
-                              wd=Path.cwd(), mixed=True, unique=False, names=False, verbose=False)
-    print(output_df)

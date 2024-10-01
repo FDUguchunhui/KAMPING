@@ -7,14 +7,14 @@ Created on Thu Jun 29 20:49:11 2023
 """
 
 import sys
-from typing import Union
+from typing import Union, Literal
 
 import typer
 from pathlib import Path
 
+from KAMPING.kegg_parser.network import InteractionParser
 from .kegg_parser.convert import genes_convert
 from .kegg_parser.call import kgml
-from .kegg_parser.pathway import parse_pathway
 
 app = typer.Typer()
 
@@ -35,11 +35,13 @@ def get_kgml(species: str,
     kgml(species, results)
 
 @app.command()
-def pathway(input_data: str = typer.Argument(..., help='Path to KGML file or folder of KGML files'),
-            mixed: bool = typer.Option(False, help='Flag to return mixed interactions.'),
-            results: Union[str, None] = typer.Option(None, help='Directory to save results. '
-                                                              'If not provided, results will be saved in the current working directory.'),
+def network(input_data: str = typer.Argument(..., help='Path to KGML file or folder of KGML files'),
+            type: Literal['gene-only', 'MPI', 'original'] = typer.Argument(..., help='the type of network'),
+            id_conversion: Union[Literal['uniprot', 'ncbi'], None] = typer.Option(None, help=' convert KEGG gene id to which identifier '),
             unique: bool = typer.Option(False, help='Flag to return unique genes with terminal modifiers.'),
+            out_dir: Union[str, None] = typer.Option(None, help='Directory to save results. '
+                                                              'If not provided, results will be saved in the current working directory.'),
+
             verbose: bool = typer.Option(False, help='Flag to print progress.')
             ):
     """
@@ -47,9 +49,37 @@ def pathway(input_data: str = typer.Argument(..., help='Path to KGML file or fol
     edgelist of genes that can be used in graph analysis. If -u/--unique flag
     is used genes are returned with terminal modifiers to enhance network
     visualization or analysis.
+
+
     """
-    # work as a wrapper function with mixed=False call parse function parse the file(s)
-    parse_pathway(input_data, results=results, mixed=mixed, unique=unique, verbose=False)
+
+    if out_dir is None:
+        out_dir = Path.cwd()
+    else:
+        out_dir = Path(out_dir)
+        # create the output directory if it does not exist
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+    if Path(input_data).is_dir():
+        for file in Path(input_data).glob('*.xml'):
+            try:
+                gip = InteractionParser(type=type, input_data=file,
+                                        id_conversion=id_conversion,
+                                        unique=unique,
+                                        verbose=verbose)
+                df_out = gip.parse_file()
+                df_out.to_csv(out_dir / f'{file.stem}.tsv', sep='\t', index=False)
+            except FileNotFoundError as e:
+                typer.echo(typer.style(e, fg=typer.colors.RED, bold=True))
+                continue
+    else:
+        gip = InteractionParser(type=type,
+                                input_data=input_data,
+                                id_conversion=id_conversion,
+                                unique=unique,
+                                verbose=verbose)
+        df_out = gip.parse_file()
+        df_out.to_csv(out_dir / f'{Path(input_data).stem}.tsv', sep='\t', index=False)
 
 
     # @cli.command()
@@ -80,3 +110,4 @@ def pathway(input_data: str = typer.Argument(..., help='Path to KGML file or fol
 
 if __name__ == '__main__':
     app()
+

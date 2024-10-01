@@ -1,7 +1,8 @@
 import pytest
 import pandas as pd
 from pathlib import Path
-from KAMPING.kegg_parser.pathway import InteractionParser, parse_pathway
+from KAMPING.kegg_parser.network import InteractionParser
+from KAMPING.main import network
 
 
 def parse_kgml_file(file_path, **kwargs):
@@ -26,7 +27,7 @@ class TestGenesInteractionParser:
     def test_genes_parser_directory(self):
         output_dir = Path('output')
         output_dir.mkdir(parents=True, exist_ok=True)
-        parse_pathway(self.test_file, wd='output', type="gene-only", unique=False, verbose=False)
+        network(self.test_file, out_dir='output', type="gene-only", id_conversion=None, unique=False, verbose=False)
         output_files = list(output_dir.glob('*.tsv'))
         assert len(output_files) > 0
         for file in output_files:
@@ -69,7 +70,7 @@ class TestGenesInteractionParser:
     def test_MPI_parser_directory(self):
         output_dir = Path('output')
         output_dir.mkdir(parents=True, exist_ok=True)
-        parse_pathway(self.test_file, wd='output', type="MPI", unique=False,  verbose=False)
+        network(self.test_file, out_dir='output', type="MPI", id_conversion='uniprot', unique=False, verbose=False)
         output_files = list(output_dir.glob('*.tsv'))
         assert len(output_files) > 0
         for file in output_files:
