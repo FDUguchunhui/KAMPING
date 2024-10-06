@@ -2,37 +2,26 @@ import re
 from collections import defaultdict
 import urllib.request as request
 import numpy as np
+import pandas as pd
 
-
-def conv_dict(root):
-    '''
-    Parse "entry" elements in the KEGG API XML file for the given root and returns a dictionary
-    with the entry id as the key and the entry name as the value.
-    '''
-    # This dictionary is the default option
-    # Only compounds are unique
-    entry_id, entry_name, entry_type = _parse_entries(root)
-
-    unique_compound = []
-    for i in range(0, len(entry_id)):
-        c = [name + '-' + entry_id[i] if name.startswith('cpd:') or name == 'undefined' else name for name in entry_name[i].split()]
-        unique_compound.append(' '.join(c))
-
-    conversion_dictionary = dict(zip(entry_id, unique_compound))
-    return conversion_dictionary
-
-def conv_dict_unique(root):
+def entry_id_conv_dict(root, unique=False):
     # This dictionary is the unique version
     # Every item is unique to reveal subgraphs
-    entry_id, entry_name, entry_type = _parse_entries(root)
+    entries = [(entry.get('id'), entry.get('name'), entry.get('type')) for entry in root.findall('entry')]
+    entries = pd.DataFrame(entries, columns=['id', 'name', 'type'])
+    # names are separated by space, make it as a list
+    entries['name'] = entries['name'].str.split()
 
-    unique_name = []
-    for i in range(0, len(entry_id)):
-        e = [name + '-' + entry_id[i] for name in entry_name[i].split()]
-        unique_name.append(' '.join(e))
+    # get unique names for each entry
+    if unique:
+        name = [[name + '-' + id for name in names ] for id, names in zip(entries['id'], entries['name'])]
+    else:
+        name = entries['name']
 
-    conversion_dictionary = dict(zip(entry_id, unique_name))
+    conversion_dictionary = dict(zip(entries['id'], name))
+
     return conversion_dictionary
+
 
 
 def names_dict(root, organism, conversion_dictionary):

@@ -1,8 +1,11 @@
+import io
+
 import pytest
 import pandas as pd
 from pathlib import Path
 from KAMPING.kegg_parser.network import InteractionParser
 from KAMPING.main import network
+import xml.etree.ElementTree as ET
 
 
 def parse_kgml_file(file_path, **kwargs):
@@ -14,8 +17,18 @@ class TestGenesInteractionParser:
 
     test_file = 'data/hsa00010_test.xml'
 
+    xml_data = '''
+    <root>
+        <relation entry1="1" entry2="2">
+            <subtype name="compound" value="cpd:C00001"/>
+        </relation>
+    </root>
+    '''
+    # xml_data to file-like object
+    xml_data = io.StringIO(xml_data)
+
     def test_parse_empty_kgml_file(self):
-        with pytest.raises(FileNotFoundError):
+        with pytest.raises(OSError):
             parse_kgml_file('data/kgml_hsa/empty.xml', type='gene-only')
 
     def test_genes_parser_single_file(self):
@@ -78,3 +91,62 @@ class TestGenesInteractionParser:
             assert not df.empty
             assert 'entry1' in df.columns
             assert 'entry2' in df.columns
+
+    def test_get_edges_with_valid_data(self):
+
+
+        parser = InteractionParser(input_data=self.xml_data, type='gene-only', unique=False, id_conversion=None, names=False, verbose=False)
+        edges = parser.get_edges()
+        assert not edges.empty
+        assert 'entry1' in edges.columns
+        assert 'entry2' in edges.columns
+        assert 'type' in edges.columns
+        assert 'name' in edges.columns
+        assert 'value' in edges.columns
+
+    def test_get_edges_with_empty_data(self):
+        xml_data = '''
+        <root></root>
+        '''
+        xml_data = io.StringIO(xml_data)
+        parser = InteractionParser(input_data=xml_data, type='gene-only', unique=False, id_conversion=None, names=False, verbose=False)
+        with pytest.raises(FileNotFoundError):
+            parser.get_edges()
+
+    def test_get_edges_with_no_relations(self):
+        xml_data = '''
+        <root>
+            <entry id="1" name="gene1" type="gene"/>
+            <entry id="2" name="gene2" type="gene"/>
+        </root>
+        '''
+        xml_data = io.StringIO(xml_data)
+        parser = InteractionParser(input_data=xml_data, type='gene-only', unique=False, id_conversion=None, names=False, verbose=False)
+        with pytest.raises(FileNotFoundError):
+            parser.get_edges()
+
+    def test_get_edges_with_mixed_data(self):
+        xml_data = '''
+        <root>
+            <relation entry1="1" entry2="2">
+                <subtype name="compound" value="cpd:C00001"/>
+            </relation>
+            <relation entry1="3" entry2="4">
+                <subtype name="activation" value="act"/>
+            </relation>
+        </root>
+        '''
+        xml_data = io.StringIO(xml_data)
+        parser = InteractionParser(input_data=xml_data, type='gene-only', unique=False, id_conversion=None, names=False, verbose=False)
+        edges = parser.get_edges()
+        assert not edges.empty
+        assert len(edges) == 2
+        assert 'entry1' in edges.columns
+        assert 'entry2' in edges.columns
+        assert 'type' in edges.columns
+        assert 'name' in edges.columns
+        assert 'value' in edges.columns
+
+
+
+

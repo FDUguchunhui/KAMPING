@@ -11,14 +11,13 @@ from typing import Union, Literal
 import typer
 import pandas as pd
 import networkx as nx
-import xml.etree.ElementTree as ET
+import lxml.etree as ET
 from KAMPING.kegg_parser import utils
 from KAMPING.kegg_parser import convert
 from KAMPING.kegg_parser import protein_metabolite_parser
 
 
 class InteractionParser():
-
 
     def __init__(self,
                  input_data: str,
@@ -42,10 +41,9 @@ class InteractionParser():
         tree = ET.parse(input_data)
         self.root = tree.getroot()
 
-        self.conversion_dictionary = self._get_conversion_dictionary()
+        self.conversion_dictionary = utils.entry_id_conv_dict(self.root, unique=unique)
 
-
-    def _get_edges(self):
+    def get_edges(self) -> pd.DataFrame:
         """
         Parses the KGML file to extract edges.
 
@@ -56,67 +54,36 @@ class InteractionParser():
         """
         pathway_link = self.root.get('link')
 
-        d = []
-
         # Parse the relation and subtype elements
-        # this will expand entry with subentry into multiple rows
-        # for example
-        # <relation entry1="20" entry2="37" type="PPrel">
-        # <subtype name="activation" value="--&gt;"/>
-        # <subtype name="indirect effect" value="..&gt;"/>
-        # will be expanded into two rows
-        # 20 37 PPrel activation --&gt;
-        # 20 37 PPrel indirect effect ..&gt;
-        for relation in self.root.findall('relation'):
-            for subtype in relation:
-                d1=relation.attrib
-                d2=subtype.attrib
-                d3=json.dumps(d1),json.dumps(d2)
-                d.append(d3)
+        relations = [
+            {
+                **relation.attrib,
+                **subtype.attrib
+            }
+            for relation in self.root.findall('relation')
+            for subtype in relation
+        ]
 
-        edgelist=[]
-        for line in d:
-            x=line[0].replace("{","").replace("}","").replace('"entry1":',"") \
-                .replace('"entry2":',"").replace('"type":',"").replace('"name":',"") \
-                .replace('"value":',"").replace('"','').replace(',',"\t").replace(' ', '')
-            y=line[1].replace("{","").replace("}","").replace('"name":',"") \
-                .replace('"',"").replace('value:',"").replace(",",'\t').replace(' ', '')
-            edgelist.append(x+"\t"+y)
+        # Create DataFrame from parsed relations
+        df = pd.DataFrame(relations, columns=['entry1', 'entry2', 'type', 'name', 'value'])
 
-        df=pd.DataFrame(edgelist)
         if df.empty:
             # throw error if no edges are found
             raise FileNotFoundError(f'ERROR: File "{self.input_data}" cannot be parsed.\nVisit {pathway_link} for pathway details.\nThere are likely no edges in which to parse...')
 
-        df=df[0].str.split("\t", expand=True).rename({0: 'entry1',1: 'entry2',
-                                                      2: 'type', 3:'name',
-                                                      4: 'value'}, axis='columns')
-        # reorder columns as entry1, entry2, type, value, name
-        df = df[['entry1', 'entry2', 'type', 'value', 'name']]
-
         # convert compound value to kegg id if only relation.type is "compound"
-        def apply_conversion(row):
-            if row['name'] == 'compound':
-                return self.conversion_dictionary.get(row['value'], row['value'])
-            else:
-                return row['value']
-        df['value'] = df.apply(apply_conversion, axis=1)
+        # compound is a list with one element mapped from dict
+        df['value'] = df.apply(lambda row: self.conversion_dictionary.get(row['value']) if row['name'] == 'compound' else row['value'], axis=1)
 
         # Convert entry1 and entry2 id to kegg id
         df['entry1'] = df['entry1'].map(self.conversion_dictionary)
         df['entry2'] = df['entry2'].map(self.conversion_dictionary)
-        # Split the entry1 and entry2 into lists
-        # entry1 and entry2 can be a list of genes
-        df['entry1'] = df['entry1'].astype(str).str.split(' ', expand = False)
-        df['entry2'] = df['entry2'].astype(str).str.split(' ', expand = False)
+
+        # expand entry1 and entry2 columns
+        df = df.explode('entry1').explode('entry2')
+
         return df
 
-    def _get_conversion_dictionary(self):
-        if self.unique:
-            conversion_dictionary = utils.conv_dict_unique(self.root)
-        else:
-            conversion_dictionary = utils.conv_dict(self.root)
-        return conversion_dictionary
 
     def _get_names_dictionary(self, conversion_dictionary):
         '''
@@ -188,28 +155,29 @@ class InteractionParser():
         # Common operations
         if self.verbose:
             typer.echo(typer.style(f'Now parsing: {title}...', fg=typer.colors.GREEN, bold=False))
-        df = self._get_edges()
-
-        # expode the entry1 and entry2 columns
-        df = df.explode('entry1', ignore_index = True).explode('entry2', ignore_index = True)
+        df = self.get_edges()
 
         # Check for compounds or undefined nodes
         has_compounds_or_undefined = not df[(df['entry1'].str.startswith('cpd:')) | (df['entry2'].str.startswith('cpd:')) | (df['entry1'].str.startswith('undefined')) | (df['entry2'].str.startswith('undefined'))].empty
 
         # if not mixed, remove "path" entries and propagate compounds
-        if self.type == 'gene-only' or self.type == 'MPI':
+        if self.type == 'gene-only' :
             # Remove edges with "path" entries
             df = df[(~df['entry1'].str.startswith('path')) & (~df['entry2'].str.startswith('path'))]
             if self.type == "gene-only":
                 if has_compounds_or_undefined:
                     df = self._propagate_compounds(df)
-            if self.type == 'MPI':
-                MPI_parser = protein_metabolite_parser.ProteinMetabliteParser(keep_PPI=True)
-                df = MPI_parser.parse_dataframe(df)
+        if self.type == 'MPI':
+            MPI_parser = protein_metabolite_parser.ProteinMetabliteParser(keep_PPI=True)
+            df = MPI_parser.parse_dataframe(df)
         elif self.type == 'original':
             pass
         else:
             raise ValueError(f'Invalid type: {self.type}')
+
+
+        # perform last clean-up to make list of  [cpd: ...] into a single string
+        df = df.explode('entry1').explode('entry2')
 
         if self.id_conversion is not None:
             # convert the edges to the desired id type
@@ -218,6 +186,7 @@ class InteractionParser():
             df = id_converter.convert_dataframe(df)
 
         #todo: remove Undefined nodes
+
 
         return df
 

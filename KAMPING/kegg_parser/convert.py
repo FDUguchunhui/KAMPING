@@ -23,7 +23,6 @@ app = typer.Typer()
 
 
 
-
 class Converter:
     def __init__(self, species: str,
                  target: Literal['uniprot', 'ncbi'] = 'uniprot',

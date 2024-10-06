@@ -51,7 +51,7 @@ def network(input_data: str = typer.Argument(..., help='Path to KGML file or fol
 
 
     """
-
+    #todo: id_conversion dictionary should be created only once to improve performance
     if out_dir is None:
         out_dir = Path.cwd()
     else:
@@ -60,7 +60,8 @@ def network(input_data: str = typer.Argument(..., help='Path to KGML file or fol
         out_dir.mkdir(parents=True, exist_ok=True)
 
     if Path(input_data).is_dir():
-        for file in Path(input_data).glob('*.xml'):
+        files = sorted(Path(input_data).glob('*.xml'))
+        for file in files:
             try:
                 logging.info(f'Parsing {file}...')
                 gip = InteractionParser(type=type, input_data=file,
@@ -69,8 +70,8 @@ def network(input_data: str = typer.Argument(..., help='Path to KGML file or fol
                                         verbose=verbose)
                 df_out = gip.parse_file()
                 df_out.to_csv(out_dir / f'{file.stem}.tsv', sep='\t', index=False)
-            except FileNotFoundError as e:
-                typer.echo(typer.style(e, fg=typer.colors.RED, bold=True))
+            except Exception as e:
+                typer.echo(typer.style(f'Error when parsing {file}: {e}', fg=typer.colors.RED, bold=True))
                 continue
     else:
         logging.info(f'Parsing {input_data}...')
@@ -110,5 +111,5 @@ def network(input_data: str = typer.Argument(..., help='Path to KGML file or fol
 
 
 if __name__ == '__main__':
-    network(input_data='data/kgml_hsa/hsa05140.xml', type='MPI', id_conversion='uniprot', out_dir='data/converted')
+    network(input_data='data/kgml_hsa/hsa051d40.xml', type='MPI', id_conversion='uniprot', out_dir='data/converted')
 

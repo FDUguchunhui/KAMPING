@@ -5,7 +5,7 @@ from KAMPING.kegg_parser.protein_metabolite_parser import ProteinMetabliteParser
 
 def test_parse_dataframe_with_empty_input():
     parser = ProteinMetabliteParser()
-    df = pd.DataFrame(columns=['entry1', 'entry2', 'types', 'value', 'name'])
+    df = pd.DataFrame(columns=['entry1', 'entry2', 'type', 'value', 'name'])
     with pytest.raises(ValueError, match='input dataframe does not contain data to parse!'):
         parser.parse_dataframe(df)
 
@@ -14,7 +14,7 @@ def test_parse_dataframe_with_valid_input():
     df = pd.DataFrame({
         'entry1': ['hsa:130589', 'hsa:2538'],
         'entry2': ['cpd:C00267-90', 'hsa:2538'],
-        'types': ['ECrel', 'PPrel'],
+        'type': ['ECrel', 'PPrel'],
         'value': ['cpd:C00267-90', 'cpd:C00267-90'],
         'name': ['compound', 'compound']
     })
@@ -33,7 +33,7 @@ def test_parse_file_with_valid_file(tmp_path):
     df = pd.DataFrame({
         'entry1': ['hsa:130589', 'hsa:2538'],
         'entry2': ['cpd:C00267-90', 'hsa:2538'],
-        'types': ['ECrel', 'PPrel'],
+        'type': ['ECrel', 'PPrel'],
         'value': ['cpd:C00267-90', 'cpd:C00267-90'],
         'name': ['compound', 'compound']
     })
@@ -51,14 +51,14 @@ def test_expand_relation_ECrel_with_valid_input():
     input = pd.Series({
         'entry1': 'hsa:130589',
         'entry2': 'hsa:2538',
-        'types': 'ECrel',
+        'type': 'ECrel',
         'value': 'cpd:C00267-90',
         'name': 'compound'
     })
     expected = pd.DataFrame.from_dict({
         'entry1': ['hsa:130589', 'hsa:2538'],
         'entry2': ['cpd:C00267-90', 'cpd:C00267-90'],
-        'types': ['PCrel', 'PCrel'],
+        'type': ['PCrel', 'PCrel'],
         'value': ['custom', 'custom'],
         'name': ['enzyme-enzyme expansion', 'enzyme-enzyme expansion']
     })
@@ -69,14 +69,14 @@ def test_expand_relation_PPrel_with_valid_input():
     input = pd.Series({
         'entry1': 'hsa:130589',
         'entry2': 'hsa:2538',
-        'types': 'PPrel',
+        'type': 'PPrel',
         'value': 'cpd:C00267-90',
         'name': 'compound'
     })
     expected = pd.DataFrame.from_dict({
         'entry1': ['hsa:130589', 'hsa:2538'],
         'entry2': ['cpd:C00267-90', 'cpd:C00267-90'],
-        'types': ['PCrel', 'PCrel'],
+        'type': ['PCrel', 'PCrel'],
         'value': ['custom', 'custom'],
         'name': ['protein-protein expansion', 'protein-protein expansion']
     })
