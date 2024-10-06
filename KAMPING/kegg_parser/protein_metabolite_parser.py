@@ -21,9 +21,9 @@ class ProteinMetabliteParser:
 
     def parse_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
 
-        # remove rows with types "maplink"
+        # remove rows with type "maplink"
         # which will leave "ECrel", "GErel", and "PPrel", and "PCrel"
-        df = df[df['types'] != 'maplink']
+        df = df[df['type'] != 'maplink']
 
         # if row number greater than 0:
         if (df.shape[0]) == 0:
@@ -35,22 +35,27 @@ class ProteinMetabliteParser:
         new_df = pd.DataFrame()
 
         for _, row in df.iterrows():
-            # for PPrel types, if the name is compound (intermediated by metabolite), expand the relation
-            if row['types'] == 'PPrel':
+            # for PPrel type, if the name is compound (intermediated by metabolite), expand the relation
+            if row['type'] == 'PPrel':
                 if row['name'] == 'compound':
                     new_row_df = expand_relation_PPrel(row)
                     new_df = pd.concat([new_df, new_row_df], ignore_index=True)
                 # if the name is not compound, keep the row when the keep_PPI is True
                 elif self.keep_PPI:
                     new_df = pd.concat([new_df, row.to_frame().T], ignore_index=True)
-            # for ECrel types, expand the relation
-            elif row['types'] == 'ECrel':
+            # for ECrel type, expand the relation
+            elif row['type'] == 'ECrel' and row['name'] == 'compound':
+                   # hsa05140.xml there is ECrel with activation... error?
+                    #         <relation entry1="23" entry2="27" type="ECrel">
+                    # <subtype name="compound" value="28"/>
+                    # <subtype name="activation" value="--&gt;"/>
+                    # <subtype name="indirect effect" value="..&gt;"/>
                 new_row_df = expand_relation_ECrel(row)
                 new_df = pd.concat([new_df, new_row_df])
-            # for PCrel types, keep the row
-            elif row['types'] == 'PCrel':
+            # for PCrel type, keep the row
+            elif row['type'] == 'PCrel':
                 new_df = pd.concat([new_df, row.to_frame().T], ignore_index=True)
-            elif row['types'] == 'GErel':
+            elif row['type'] == 'GErel':
                 if self.keep_PPI:
                     new_df = pd.concat([new_df, row.to_frame().T], ignore_index=True)
 
@@ -64,10 +69,6 @@ class ProteinMetabliteParser:
         if not self.keep_glycan:
             keep = ~ (new_df['entry1'].str.startswith('gl') | new_df['entry2'].str.startswith('gl'))
             new_df = new_df[keep]
-
-        # remove the suffix from the entry
-        new_df['entry1'] = new_df['entry1'].apply(lambda x: remove_suffix(x))
-        new_df['entry2'] = new_df['entry2'].apply(lambda x: remove_suffix(x))
 
         return new_df
 
@@ -89,18 +90,18 @@ class ProteinMetabliteParser:
 
 def expand_relation_ECrel(row: pd.Series):
     '''
-    helper function to expand the relation for ECrel types
+    helper function to expand the relation for ECrel type
     '''
     new_row1 = row.copy()
     new_row1['entry2'] = row['value']
-    new_row1['types'] = 'PCrel'
+    new_row1['type'] = 'PCrel'
     new_row1['value'] = "custom"
     new_row1['name'] = "enzyme-enzyme expansion"
 
     new_row2 = row.copy()
     new_row2['entry1'] = row['entry2']
     new_row2['entry2'] = row['value']
-    new_row2['types'] = 'PCrel'
+    new_row2['type'] = 'PCrel'
     new_row2['value'] = 'custom'
     new_row2['name'] = 'enzyme-enzyme expansion'
 
@@ -110,18 +111,18 @@ def expand_relation_ECrel(row: pd.Series):
 
 def expand_relation_PPrel(row: pd.Series):
     '''
-    helper function to expand the relation for PCrel types
+    helper function to expand the relation for PCrel type
     '''
     new_row1 = row.copy()
     new_row1['entry2'] = row['value']
-    new_row1['types'] = 'PCrel'
+    new_row1['type'] = 'PCrel'
     new_row1['value'] = 'custom'
     new_row1['name'] = 'protein-protein expansion'
 
     new_row2 = row.copy()
     new_row2['entry1'] = row['entry2']
     new_row2['entry2'] = row['value']
-    new_row2['types'] = 'PCrel'
+    new_row2['type'] = 'PCrel'
     new_row2['value'] = 'custom'
     new_row2['name'] = 'protein-protein expansion'
 
@@ -142,7 +143,7 @@ def remove_suffix(entry: str):
 def parse_to_mpi(input_data: str, wd: Path, keep_glycan=False, keep_PPI=False, verbose: bool = False):
     '''
     Converts a file or folder of mixed pathways tsv files to metabolite-protein interactions tsv files.
-    The generalized metabolite-protein interactions includes the following typess:
+    The generalized metabolite-protein interactions includes the following types:
     - ECrel: Enzyme-Enzyme relations which is successive enzyme reaction connected by a compound.
     - PCrel: Protein-Compound relations which is a protein connected to a compound.
     - PPrel: Protein-Protein relations with a compound as intermediate.

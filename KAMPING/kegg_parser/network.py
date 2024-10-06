@@ -43,8 +43,6 @@ class InteractionParser():
         self.root = tree.getroot()
 
         self.conversion_dictionary = self._get_conversion_dictionary()
-        if self.names:
-            self.names_dictionary = self._get_names_dictionary(self.conversion_dictionary)
 
 
     def _get_edges(self):
@@ -91,10 +89,10 @@ class InteractionParser():
             raise FileNotFoundError(f'ERROR: File "{self.input_data}" cannot be parsed.\nVisit {pathway_link} for pathway details.\nThere are likely no edges in which to parse...')
 
         df=df[0].str.split("\t", expand=True).rename({0: 'entry1',1: 'entry2',
-                                                      2: 'types', 3:'name',
+                                                      2: 'type', 3:'name',
                                                       4: 'value'}, axis='columns')
-        # reorder columns as entry1, entry2, types, value, name
-        df = df[['entry1', 'entry2', 'types', 'value', 'name']]
+        # reorder columns as entry1, entry2, type, value, name
+        df = df[['entry1', 'entry2', 'type', 'value', 'name']]
 
         # convert compound value to kegg id if only relation.type is "compound"
         def apply_conversion(row):
@@ -169,16 +167,6 @@ class InteractionParser():
         return df0[~df0['entry1'].str.startswith(('cpd', 'undefined', 'path')) & ~df0['entry2'].str.startswith(('cpd', 'undefined', 'path'))]
 
 
-    def _add_names(self, df):
-        '''
-        This function adds the human-understandable names to the dataframe
-        '''
-        df['entry1_name'] = df.entry1.map(self.names_dictionary)
-        df['entry2_name'] = df.entry2.map(self.names_dictionary)
-        df.insert(1, 'entry1_name', df.pop('entry1_name'))
-        df.insert(3, 'entry2_name', df.pop('entry2_name'))
-        return df
-
     def parse_file(self) -> pd.DataFrame:
         '''
         This function parses the KGML file and returns a dataframe of the edges
@@ -203,28 +191,34 @@ class InteractionParser():
         df = self._get_edges()
 
         # expode the entry1 and entry2 columns
-        df_out = df.explode('entry1', ignore_index = True).explode('entry2', ignore_index = True)
+        df = df.explode('entry1', ignore_index = True).explode('entry2', ignore_index = True)
 
         # Check for compounds or undefined nodes
-        has_compounds_or_undefined = not df_out[(df_out['entry1'].str.startswith('cpd:')) | (df_out['entry2'].str.startswith('cpd:')) | (df_out['entry1'].str.startswith('undefined')) | (df_out['entry2'].str.startswith('undefined'))].empty
+        has_compounds_or_undefined = not df[(df['entry1'].str.startswith('cpd:')) | (df['entry2'].str.startswith('cpd:')) | (df['entry1'].str.startswith('undefined')) | (df['entry2'].str.startswith('undefined'))].empty
 
         # if not mixed, remove "path" entries and propagate compounds
         if self.type == 'gene-only' or self.type == 'MPI':
             # Remove edges with "path" entries
-            df_out = df_out[(~df_out['entry1'].str.startswith('path')) & (~df_out['entry2'].str.startswith('path'))]
+            df = df[(~df['entry1'].str.startswith('path')) & (~df['entry2'].str.startswith('path'))]
             if self.type == "gene-only":
                 if has_compounds_or_undefined:
-                    df_out = self._propagate_compounds(df_out)
+                    df = self._propagate_compounds(df)
             if self.type == 'MPI':
                 MPI_parser = protein_metabolite_parser.ProteinMetabliteParser(keep_PPI=True)
-                df_out = MPI_parser.parse_dataframe(df_out)
+                df = MPI_parser.parse_dataframe(df)
+        elif self.type == 'original':
+            pass
+        else:
+            raise ValueError(f'Invalid type: {self.type}')
 
         if self.id_conversion is not None:
             # convert the edges to the desired id type
             id_converter = convert.Converter(species=self.root.get('org'), target=self.id_conversion,
                                              unique=self.unique)
-            df_out = id_converter.convert_dataframe(df_out)
+            df = id_converter.convert_dataframe(df)
 
-        return df_out
+        #todo: remove Undefined nodes
+
+        return df
 
 

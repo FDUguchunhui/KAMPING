@@ -13,7 +13,7 @@ packages = [
 KAMPING = "KAMPING.main:app"
 
 [tool.poetry.dependencies]
-python = "^3.8, < 3.10"
+python = "^3.9"
 networkx = "^3.1"
 click = "^8.1.3"
 pandas = "*"
@@ -23,7 +23,10 @@ pathlib = "^1.0.1"
 scikit-mol = "^0.3.1"
 rdkit = "^2024.3.5"
 numpy = "*"
-bio-embeddings = {git = "https://github.com/sacdallago/bio_embeddings.git"}
+unipressed = "^1.4.0"
+torch-geometric = "^2.6.1"
+torch = "^1.13"
+h5py = "^3.12.1"
 
 [tool.poetry.group.dev.dependencies]
 importlib = "^1.0.4"

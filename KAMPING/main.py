@@ -5,16 +5,16 @@ Created on Thu Jun 29 20:49:11 2023
 
 @author: everest_castaneda1
 """
-
+import logging
+logging.basicConfig(level=logging.INFO)
 import sys
 from typing import Union, Literal
-
+from typing_extensions import Annotated
 import typer
 from pathlib import Path
 
 from KAMPING.kegg_parser.network import InteractionParser
-from .kegg_parser.convert import genes_convert
-from .kegg_parser.call import kgml
+from KAMPING.kegg_parser.call import kgml
 
 app = typer.Typer()
 
@@ -34,16 +34,15 @@ def get_kgml(species: str,
 
     kgml(species, results)
 
+#todo: check the default of boolean
 @app.command()
 def network(input_data: str = typer.Argument(..., help='Path to KGML file or folder of KGML files'),
             type: Literal['gene-only', 'MPI', 'original'] = typer.Argument(..., help='the type of network'),
             id_conversion: Union[Literal['uniprot', 'ncbi'], None] = typer.Option(None, help=' convert KEGG gene id to which identifier '),
-            unique: bool = typer.Option(False, help='Flag to return unique genes with terminal modifiers.'),
+            unique: Annotated[bool, typer.Option(help='Flag to return unique genes with terminal modifiers.')] = False,
             out_dir: Union[str, None] = typer.Option(None, help='Directory to save results. '
                                                               'If not provided, results will be saved in the current working directory.'),
-
-            verbose: bool = typer.Option(False, help='Flag to print progress.')
-            ):
+            verbose: Annotated[bool, typer.Option(help='Flag to print progress.')] = False):
     """
     Converts a folder of KGML files or a single KGML file into a
     edgelist of genes that can be used in graph analysis. If -u/--unique flag
@@ -63,6 +62,7 @@ def network(input_data: str = typer.Argument(..., help='Path to KGML file or fol
     if Path(input_data).is_dir():
         for file in Path(input_data).glob('*.xml'):
             try:
+                logging.info(f'Parsing {file}...')
                 gip = InteractionParser(type=type, input_data=file,
                                         id_conversion=id_conversion,
                                         unique=unique,
@@ -73,6 +73,7 @@ def network(input_data: str = typer.Argument(..., help='Path to KGML file or fol
                 typer.echo(typer.style(e, fg=typer.colors.RED, bold=True))
                 continue
     else:
+        logging.info(f'Parsing {input_data}...')
         gip = InteractionParser(type=type,
                                 input_data=input_data,
                                 id_conversion=id_conversion,
@@ -109,5 +110,5 @@ def network(input_data: str = typer.Argument(..., help='Path to KGML file or fol
 
 
 if __name__ == '__main__':
-    app()
+    network(input_data='data/kgml_hsa/hsa05140.xml', type='MPI', id_conversion='uniprot', out_dir='data/converted')
 

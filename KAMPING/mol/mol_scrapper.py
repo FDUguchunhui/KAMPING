@@ -4,7 +4,8 @@ from pathlib import Path
 import pandas as pd
 import typer
 
-from KAMPING.embedding.utils import read_all_files, get_unique_compound_values, fetch_mol_file_string, get_smiles
+from KAMPING.mol.utils import get_unique_compound_values, fetch_mol_file_string, get_smiles
+from KAMPING.utils import read_all_tsv_files
 
 
 def mol_scrapper(input_data:str, output_file: str):
@@ -22,7 +23,7 @@ def mol_scrapper(input_data:str, output_file: str):
     # check if input_data is a folder
     if os.path.isdir(input_data):
         # get all files in the folder
-        df = read_all_files(input_data)
+        df = read_all_tsv_files(input_data)
         compounds = get_unique_compound_values(df)
     else:
         # get file name without extension

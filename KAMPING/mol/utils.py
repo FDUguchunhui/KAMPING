@@ -1,5 +1,3 @@
-import os
-
 import pandas as pd
 import requests
 from rdkit import Chem
@@ -24,19 +22,6 @@ def get_smiles(mol_file_string):
 
 
 # read all file in the directory as one dataframe
-def read_all_files(directory):
-    '''
-    Read all files in the directory as one dataframe.
-    '''
-    # list a files except those start with "."
-
-    all_files = os.listdir(directory)
-    df = pd.DataFrame()
-    for file in all_files:
-        if file.startswith('.'):
-            continue
-        df = pd.concat([df, pd.read_csv(os.path.join(directory, file), sep='\t')])
-    return df
 
 # get unique values from column entry1 and entry2 combined and name starts with 'cpd'
 def get_unique_compound_values(df):

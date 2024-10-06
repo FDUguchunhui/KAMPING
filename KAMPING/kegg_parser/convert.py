@@ -72,8 +72,6 @@ class Converter:
 
         # Due to one to many mapping, we need to explode the lists
         df = df.explode('entry1', ignore_index = True).explode('entry2', ignore_index = True)
-        df['entry1'] = df['entry1'].str.replace(f'{self.target}:', '')
-        df['entry2'] = df['entry2'].str.replace(f'{self.target}:', '')
 
         if self.unique:
             df['entry1'] = df['entry1'] + df['match1']
@@ -106,41 +104,3 @@ class Converter:
         # print work done
         typer.echo(typer.style(f'Conversion of {file.name} complete!', fg=typer.colors.GREEN, bold=True))
 
-
-def genes_convert(species: str,
-                  input_data: str,
-                  wd: str,
-                  target: Literal['uniprot', 'ncbi'] = 'uniprot',
-                  unique: bool = False,
-                  verbose: bool = False):
-    '''
-    Converts a folder of KGML files or a single KGML file into a weighted
-    edgelist of genes that can be used in graph analysis.
-    '''
-    # set working directory
-    wd = Path(wd)
-    wd.mkdir(parents=True, exist_ok=True)
-
-    converter = Converter(species, unique=unique,
-                          target=target,
-                          verbose=verbose)
-
-    if Path(input_data).is_dir():
-        for file in Path(input_data).glob('*.tsv'):
-            try:
-                df_converted = converter.convert_file(file)
-                df_converted.to_csv(Path(wd) / f'{file.stem}_{target}.tsv', sep='\t', index=False)
-            except FileNotFoundError as e:
-                typer.echo(typer.style(e, fg=typer.colors.RED, bold=True))
-                continue
-    else:
-        df_converted = converter.convert_file(input_data)
-
-
-if __name__ == '__main__':
-    # set working directory
-    # for test
-    genes_convert('hsa',
-                  input_data='data/mixed_output_PC/hsa00010_mpi.tsv',
-                  wd='data/mixed_output_converted',
-                  target='uniprot')

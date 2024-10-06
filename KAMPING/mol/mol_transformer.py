@@ -6,6 +6,7 @@ import sys, os
 import warnings
 from typing import Literal, Any
 
+import h5py
 import numpy as np
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 import scikit_mol.fingerprints
@@ -60,8 +61,8 @@ class SmilesFileTransformer():
         df = df.dropna(subset=['ROMol'])
         # get the molecular vector
 
-        mol_vector = self.transformer.transform(df['ROMol'])
-        return valid_row_id, mol_vector
+        mol_embeddings = self.transformer.transform(df['ROMol'])
+        return valid_row_id, mol_embeddings
 
 
 class SmilesFileSMTransformer(SmilesFileTransformer):
@@ -84,7 +85,9 @@ class SmilesFileSMTransformer(SmilesFileTransformer):
 
         super().__init__(transformer)
 
-    def convert_mol_to_smiles(self, file:str, smiles_col:str, id_col:str) -> tuple[list[str], np.array]:
+    def convert_mol_to_embed(self, file:str, smiles_col:str,
+                             id_col:str,
+                             output_path: str) -> None:
         '''
         Convert molecular files to SMILES
 
@@ -92,20 +95,35 @@ class SmilesFileSMTransformer(SmilesFileTransformer):
         file: str, path to the MOL file
         smiles_col: str, column name for SMILES
         id_col: str, column name for ID
+        output_path: str, output path to save the h5 file
 
         return:
-        mol_vector: np.array, molecular vector
+        None
 
-        usage:
-        mol_vector = convert_mol_to_smiles('data/mol_files/smiles_file.tsv', smiles_col='smiles', id_col='id')
         '''
-        return self.mol_transformer.transform(file, smiles_col, id_col)
+
+        mol_ids, mol_embeddings = self.transform(file, smiles_col, id_col)
+        # dictionary of key and embedding
+        embeddings = dict(zip(mol_ids, mol_embeddings))
+
+        # create parent directory if not exist
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        # save  mol_ids, and mol_embedding as h5
+        with h5py.File(output_path, 'w') as h5file:
+            for key, value in embeddings.items():
+                h5file.create_dataset(key, data=value)
+
+
+
+# todo: another method to save embedding as pickle
 
 if __name__ == '__main__':
     # supress warnings
 
     # set working directory use os
     # initialize the transformer
-    mol_transformer = SmilesFileSMTransformer(transformer="topological", dim=2048)
-    mol_vector = mol_transformer.transform( 'data/mol_files/smiles_file.tsv', 'smiles', 'id')
-    print(mol_vector)
+    mol_transformer = SmilesFileSMTransformer(transformer="rdkit", dim=2048)
+    mol_transformer.convert_mol_to_embed( 'data/mol_files/smiles_file.tsv', 'smiles', 'id',
+                                            output_path='data/embedding/mol_embedding.h5')
+
+

@@ -34,20 +34,6 @@ def conv_dict_unique(root):
     conversion_dictionary = dict(zip(entry_id, unique_name))
     return conversion_dictionary
 
-def graphics_dict(root):
-    '''
-    Parses the graphics in the KEGG API XML file for the given root.
-    Returns list of tuple of the entry id and the x and y coordinates.
-    '''
-    entry_dict = defaultdict(list)
-    for entry in root.findall('entry'):
-        for graphics in entry.find('graphics').items():
-            if graphics[0] == 'x' or graphics[0] == 'y':
-                entry_dict[entry.attrib['id']].append(int(graphics[1]))
-    graphics_dict = {}
-    for key, items in entry_dict.items():
-        graphics_dict[key] = tuple(items)
-    return graphics_dict
 
 def names_dict(root, organism, conversion_dictionary):
     '''

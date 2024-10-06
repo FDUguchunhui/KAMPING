@@ -1,7 +1,7 @@
 import os
 
 import pytest
-import KAMPING.embedding.mol_transformer as mol_transformer
+import KAMPING.mol.mol_transformer as mol_transformer
 
 class TestMolTransformer:
 
