@@ -8,8 +8,8 @@ import torch
 from torch_geometric.data import HeteroData, download_url, extract_zip
 from torch_geometric.transforms import RandomLinkSplit, ToUndirected
 
-import KAMPING
-import KAMPING.utils
+import kamping
+import kamping.utils
 
 
 def load_node_h5(file_path: str):
@@ -30,7 +30,7 @@ def combined_tsv(input_dir: str):
     # if folder is empty raise error
     if not os.listdir(input_dir):
         raise ValueError(f"Folder {input_dir} is empty")
-    df = KAMPING.utils.read_all_tsv_files(input_dir)
+    df = kamping.utils.read_all_tsv_files(input_dir)
 
 
 def load_edge_csv(file_path: str,
@@ -38,9 +38,10 @@ def load_edge_csv(file_path: str,
 
     # if file_path is a directory, combine all the files in the directory into a single dataframe
     if os.path.isdir(file_path):
-        df = KAMPING.utils.read_all_tsv_files(file_path)
+        df = kamping.utils.read_all_tsv_files(file_path)
     else:
         df = pd.read_csv(file_path, sep='\t')
+
 
     # split df into two parts: one for protein-protein edges and the other for protein-compound edges
     # the PP edges will have type "PPrel"

@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch
-from KAMPING.uniprot.parser import get_protein_seq, get_protein_seqs
+from kamping.uniprot.parser import get_protein_seq, get_protein_seqs
 
 class TestUniprotParser:
     def test_get_protein_seq_with_valid_accession(self):

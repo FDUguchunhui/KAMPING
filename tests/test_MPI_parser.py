@@ -1,7 +1,7 @@
 import pytest
 import pandas as pd
 from pathlib import Path
-from KAMPING.kegg_parser.protein_metabolite_parser import ProteinMetabliteParser, expand_relation_ECrel, expand_relation_PPrel, remove_suffix
+from kamping.parser.protein_metabolite_parser import ProteinMetabliteParser, expand_relation_ECrel, expand_relation_PPrel, remove_suffix
 
 def test_parse_dataframe_with_empty_input():
     parser = ProteinMetabliteParser()
@@ -56,8 +56,8 @@ def test_expand_relation_ECrel_with_valid_input():
         'name': 'compound'
     })
     expected = pd.DataFrame.from_dict({
-        'entry1': ['hsa:130589', 'hsa:2538'],
-        'entry2': ['cpd:C00267-90', 'cpd:C00267-90'],
+        'entry1': ['hsa:130589', 'cpd:C00267-90'],
+        'entry2': ['cpd:C00267-90', 'hsa:2538'],
         'type': ['PCrel', 'PCrel'],
         'value': ['custom', 'custom'],
         'name': ['enzyme-enzyme expansion', 'enzyme-enzyme expansion']
@@ -74,8 +74,8 @@ def test_expand_relation_PPrel_with_valid_input():
         'name': 'compound'
     })
     expected = pd.DataFrame.from_dict({
-        'entry1': ['hsa:130589', 'hsa:2538'],
-        'entry2': ['cpd:C00267-90', 'cpd:C00267-90'],
+        'entry1': ['hsa:130589', 'cpd:C00267-90'],
+        'entry2': ['cpd:C00267-90', 'hsa:2538'],
         'type': ['PCrel', 'PCrel'],
         'value': ['custom', 'custom'],
         'name': ['protein-protein expansion', 'protein-protein expansion']

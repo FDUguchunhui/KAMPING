@@ -1,4 +1,4 @@
-# KEGG protein-metabolite interaction parser
+# KEGG automated metabolite protein interaction network for graph-model (KAMPING)
 
 ## Introduction
 
@@ -43,17 +43,15 @@ hsa:2538 cpd:C00267-90  ECrel compound compound
 ```
 
 ## Code
-expand output from `knext mixed 
-since the `knext genes` propogate metabolite to get the gene-gene relation. 
-```
-knext mixed --input data/kegg/hsa-ecrel.txt --output data/kegg/hsa-ecrel-expanded.txt
-```
+
+
 
 After retrieve all relation in an kegg pathway
 ```
 knext mpi --input data/kegg/hsa-ecrel-expanded.txt --output data/kegg/hsa-ecrel-expanded-mpi.txt
 ```
 
-Do I add  processing functionality on fly or do I add a new command `knext kegg` to process the expanded file from 
-output?
+
+![img.png](figures/img.png)
+
 

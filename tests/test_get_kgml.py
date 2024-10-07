@@ -15,9 +15,9 @@ def test_get_kgml():
     KEGGget = 'http://rest.kegg.jp/get/hsa00232/kgml'
     response = requests.get(KEGGget).text
     root = ET.fromstring(response)
-    
+
     tree_data = ET.parse('data/hsa00232.xml')
     root_data = tree_data.getroot()
-    
+
     assert root_data.get('name') == root.get('name')
     

@@ -6,23 +6,35 @@ Created on Thu Jun 29 20:49:11 2023
 @author: everest_castaneda1
 """
 import logging
+from enum import Enum
+
 logging.basicConfig(level=logging.INFO)
 import sys
-from typing import Union, Literal
-from typing_extensions import Annotated
+from typing import Union
+from typing_extensions import  Annotated
 import typer
 from pathlib import Path
 
-from KAMPING.kegg_parser.network import InteractionParser
-from KAMPING.kegg_parser.call import kgml
+from kamping.parser.network import InteractionParser
+from kamping.parser.call import kgml
 
 app = typer.Typer()
 
+class Type(str, Enum):
+    gene_only = 'gene-only'
+    MPI = 'MPI'
+    original = 'original'
+
+class Identifier_Conversion(str, Enum):
+    uniprot = 'uniprot'
+    ncbi = 'ncbi'
+    none = None
+
 @app.command()
-def get_kgml(species: str,
-             results: Union[str, None] = typer.Option(None, help='Directory to save results. '
+def get_kgml(species: str = typer.Argument(..., help='the species to get kgml files'),
+             out_dir: Union[str, None] = typer.Option(None, help='Directory to save results. '
                                                                  'If not provided, results will be saved to the current working directory.')
-):
+             ):
     """
     Acquires all KGML files for a given species. Use a KEGG species
     identification, usually a 3 to 4 letter organism code, as input. Handles
@@ -32,13 +44,14 @@ def get_kgml(species: str,
     https://www.genome.jp/kegg/catalog/org_list.html
     """
 
-    kgml(species, results)
+    kgml(species, out_dir)
 
 #todo: check the default of boolean
 @app.command()
-def network(input_data: str = typer.Argument(..., help='Path to KGML file or folder of KGML files'),
-            type: Literal['gene-only', 'MPI', 'original'] = typer.Argument(..., help='the type of network'),
-            id_conversion: Union[Literal['uniprot', 'ncbi'], None] = typer.Option(None, help=' convert KEGG gene id to which identifier '),
+def network(
+            type: Annotated[Type, typer.Option(help='the type of network')],
+            input_data: str = typer.Argument(..., help='Path to KGML file or folder of KGML files'),
+            id_conversion: Annotated[Identifier_Conversion, typer.Option(help=' convert KEGG gene id to which identifier ')] = None,
             unique: Annotated[bool, typer.Option(help='Flag to return unique genes with terminal modifiers.')] = False,
             out_dir: Union[str, None] = typer.Option(None, help='Directory to save results. '
                                                               'If not provided, results will be saved in the current working directory.'),
@@ -64,8 +77,8 @@ def network(input_data: str = typer.Argument(..., help='Path to KGML file or fol
         for file in files:
             try:
                 logging.info(f'Parsing {file}...')
-                gip = InteractionParser(type=type, input_data=file,
-                                        id_conversion=id_conversion,
+                gip = InteractionParser(type=type.value, input_data=file,
+                                        id_conversion=id_conversion.value,
                                         unique=unique,
                                         verbose=verbose)
                 df_out = gip.parse_file()

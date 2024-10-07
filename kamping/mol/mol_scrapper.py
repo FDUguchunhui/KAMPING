@@ -4,8 +4,8 @@ from pathlib import Path
 import pandas as pd
 import typer
 
-from KAMPING.mol.utils import get_unique_compound_values, fetch_mol_file_string, get_smiles
-from KAMPING.utils import read_all_tsv_files
+from kamping.mol.utils import get_unique_compound_values, fetch_mol_file_string, get_smiles
+from kamping.utils import read_all_tsv_files
 
 
 def mol_scrapper(input_data:str, output_file: str):

@@ -21,10 +21,6 @@ class ProteinMetabliteParser:
 
     def parse_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
 
-        # remove rows with type "maplink"
-        # which will leave "ECrel", "GErel", and "PPrel", and "PCrel"
-        df = df[df['type'] != 'maplink']
-
         # if row number greater than 0:
         if (df.shape[0]) == 0:
             # throw an error
@@ -99,8 +95,8 @@ def expand_relation_ECrel(row: pd.Series):
     new_row1['name'] = "enzyme-enzyme expansion"
 
     new_row2 = row.copy()
-    new_row2['entry1'] = row['entry2']
-    new_row2['entry2'] = row['value']
+    new_row2['entry2'] = row['entry2']
+    new_row2['entry1'] = row['value']
     new_row2['type'] = 'PCrel'
     new_row2['value'] = 'custom'
     new_row2['name'] = 'enzyme-enzyme expansion'
@@ -120,8 +116,8 @@ def expand_relation_PPrel(row: pd.Series):
     new_row1['name'] = 'protein-protein expansion'
 
     new_row2 = row.copy()
-    new_row2['entry1'] = row['entry2']
-    new_row2['entry2'] = row['value']
+    new_row2['entry2'] = row['entry2']
+    new_row2['entry1'] = row['value']
     new_row2['type'] = 'PCrel'
     new_row2['value'] = 'custom'
     new_row2['name'] = 'protein-protein expansion'

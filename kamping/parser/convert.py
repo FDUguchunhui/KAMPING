@@ -14,7 +14,7 @@ import pandas as pd
 import typer
 from pandas import DataFrame
 from typing import Literal, overload
-from KAMPING.kegg_parser.utils import get_conversion_dictionary
+from kamping.parser.utils import get_conversion_dictionary
 
 
 

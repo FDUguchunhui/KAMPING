@@ -3,10 +3,10 @@ import io
 import pytest
 import pandas as pd
 from pathlib import Path
-from KAMPING.kegg_parser.network import InteractionParser
-from KAMPING.main import network
+from kamping.parser.network import InteractionParser
+from kamping.main import network
 import xml.etree.ElementTree as ET
-
+from kamping.main import  Type, Identifier_Conversion
 
 def parse_kgml_file(file_path, **kwargs):
     parser = InteractionParser(input_data=file_path, **kwargs)
@@ -40,7 +40,7 @@ class TestGenesInteractionParser:
     def test_genes_parser_directory(self):
         output_dir = Path('output')
         output_dir.mkdir(parents=True, exist_ok=True)
-        network(self.test_file, out_dir='output', type="gene-only", id_conversion=None, unique=False, verbose=False)
+        network('gene-only', self.test_file, out_dir='output', id_conversion=None, unique=False, verbose=False)
         output_files = list(output_dir.glob('*.tsv'))
         assert len(output_files) > 0
         for file in output_files:
@@ -83,7 +83,7 @@ class TestGenesInteractionParser:
     def test_MPI_parser_directory(self):
         output_dir = Path('output')
         output_dir.mkdir(parents=True, exist_ok=True)
-        network(self.test_file, out_dir='output', type="MPI", id_conversion='uniprot', unique=False, verbose=False)
+        network("MPI", self.test_file, out_dir='output', id_conversion='uniprot', unique=False, verbose=False)
         output_files = list(output_dir.glob('*.tsv'))
         assert len(output_files) > 0
         for file in output_files:
@@ -124,6 +124,13 @@ class TestGenesInteractionParser:
         parser = InteractionParser(input_data=xml_data, type='gene-only', unique=False, id_conversion=None, names=False, verbose=False)
         with pytest.raises(FileNotFoundError):
             parser.get_edges()
+
+    def test_remove_undefined_entries(self):
+        output_df = parse_kgml_file(self.test_file, type="gene-only", id_conversion='uniprot',
+                                    unique=False, verbose=False)
+        # check entries with undefined values
+        assert output_df[output_df['entry1'].str.contains('undefined')].empty
+        assert output_df[output_df['entry2'].str.contains('undefined')].empty
 
     def test_get_edges_with_mixed_data(self):
         xml_data = '''

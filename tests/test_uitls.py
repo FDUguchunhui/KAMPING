@@ -2,8 +2,8 @@ import os
 import pandas as pd
 import pytest
 
-from KAMPING.kegg_parser.utils import entry_id_conv_dict
-from KAMPING.utils import read_all_tsv_files
+from kamping.parser.utils import entry_id_conv_dict
+from kamping.utils import read_all_tsv_files
 import xml.etree.ElementTree as ET
 
 def test_read_all_tsv_files_empty_directory(tmp_path):

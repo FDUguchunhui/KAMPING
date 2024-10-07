@@ -6,18 +6,21 @@
 """
 
 import json
-from typing import Union, Literal
-
+from typing import Union
+from typing_extensions import Literal
 import typer
 import pandas as pd
 import networkx as nx
-import lxml.etree as ET
-from KAMPING.kegg_parser import utils
-from KAMPING.kegg_parser import convert
-from KAMPING.kegg_parser import protein_metabolite_parser
+import xml.etree.ElementTree as ET
+from kamping.parser import utils
+from kamping.parser import convert
+from kamping.parser import protein_metabolite_parser
 
 
 class InteractionParser():
+    ''''
+    undefined nodes are removed from the final output
+    '''
 
     def __init__(self,
                  input_data: str,
@@ -81,7 +84,6 @@ class InteractionParser():
 
         # expand entry1 and entry2 columns
         df = df.explode('entry1').explode('entry2')
-
         return df
 
 
@@ -92,26 +94,6 @@ class InteractionParser():
         '''
         names_dictionary = utils.names_dict(self.root, self.root.get('org'), conversion_dictionary)
         return self.names_dictionary
-
-
-
-
-    # def _parse_multi_to_multi(self, df):
-    #     '''
-    #     This function takes a dataframe with multiple genes in each entry1 and entry2
-    #     and returns a dataframe with each gene pair as a separate row
-    #     '''
-    #     # todo: use df explode instead
-    #     edges = []
-    #     for index, row in df.iterrows():
-    #         entry1_list = row.iloc[0]
-    #         entry2_list = row.iloc[1]
-    #         for entry1 in entry1_list:
-    #             for entry2 in entry2_list:
-    #                 edges.append([entry1, entry2]  + row[2:].tolist())
-    #
-    #     df_out = pd.DataFrame(edges, columns = ['entry1', 'entry2', 'type', 'value', 'name'])
-    #     return df_out
 
     def _propagate_compounds(self, xdf):
         G = nx.from_pandas_edgelist(xdf, source='entry1', target='entry2', edge_attr='name', create_using=nx.DiGraph())
@@ -157,6 +139,11 @@ class InteractionParser():
             typer.echo(typer.style(f'Now parsing: {title}...', fg=typer.colors.GREEN, bold=False))
         df = self.get_edges()
 
+        # perform last clean-up to make list of  [cpd: ...] into a single string
+        # those are mapped by the conversion dictionary for column entry1, entry2, and value
+        df = df.explode('entry1').explode('entry2').explode('value')
+
+
         # Check for compounds or undefined nodes
         has_compounds_or_undefined = not df[(df['entry1'].str.startswith('cpd:')) | (df['entry2'].str.startswith('cpd:')) | (df['entry1'].str.startswith('undefined')) | (df['entry2'].str.startswith('undefined'))].empty
 
@@ -164,10 +151,12 @@ class InteractionParser():
         if self.type == 'gene-only' :
             # Remove edges with "path" entries
             df = df[(~df['entry1'].str.startswith('path')) & (~df['entry2'].str.startswith('path'))]
-            if self.type == "gene-only":
-                if has_compounds_or_undefined:
-                    df = self._propagate_compounds(df)
-        if self.type == 'MPI':
+            if has_compounds_or_undefined:
+                df = self._propagate_compounds(df)
+        elif self.type == 'MPI':
+            # remove interaction relationship with type "maplink"
+            # which will leave "ECrel", "GErel", and "PPrel", and "PCrel"
+            df = df[df['type'] != 'maplink']
             MPI_parser = protein_metabolite_parser.ProteinMetabliteParser(keep_PPI=True)
             df = MPI_parser.parse_dataframe(df)
         elif self.type == 'original':
@@ -175,18 +164,15 @@ class InteractionParser():
         else:
             raise ValueError(f'Invalid type: {self.type}')
 
-
-        # perform last clean-up to make list of  [cpd: ...] into a single string
-        df = df.explode('entry1').explode('entry2')
-
         if self.id_conversion is not None:
             # convert the edges to the desired id type
             id_converter = convert.Converter(species=self.root.get('org'), target=self.id_conversion,
                                              unique=self.unique)
             df = id_converter.convert_dataframe(df)
 
-        #todo: remove Undefined nodes
-
+        # remove row with undefined entries
+        df = df[~df['entry1'].str.startswith('undefined')]
+        df = df[~df['entry2'].str.startswith('undefined')]
 
         return df
 

@@ -1,7 +1,7 @@
 import logging
 
 import pandas as pd
-import KAMPING.mol.utils
+import kamping.mol.utils
 import re
 import time
 import json
@@ -11,7 +11,7 @@ from urllib.parse import urlparse, parse_qs, urlencode
 import requests
 from requests.adapters import HTTPAdapter, Retry
 
-import KAMPING.utils
+import kamping.utils
 
 POLLING_INTERVAL = 3
 API_URL = "https://rest.uniprot.org"
@@ -236,7 +236,7 @@ if __name__ == '__main__':
     # df = KAMPING.embedding.utils.read_all_files('data/converted')
     # print(len(get_unique_proteins(df, 'up')))
 
-    df = KAMPING.utils.read_all_tsv_files('data/converted')
+    df = kamping.utils.read_all_tsv_files('data/converted')
     proteins = get_unique_proteins(df, 'up')
 
     job_id = submit_id_mapping(

@@ -4,7 +4,7 @@ import pandas as pd
 from typing_extensions import deprecated
 from unipressed import UniprotkbClient
 
-import KAMPING.utils
+import kamping.utils
 
 logging.basicConfig(level = logging.INFO)
 import os
@@ -12,7 +12,7 @@ from typing import List
 
 import requests
 
-import KAMPING.uniprot.uniprot
+import kamping.uniprot.uniprot
 
 
 def get_protein_seq(accession_number: str) -> str:
@@ -63,8 +63,8 @@ def get_protein_seqs_from_files(folder, output_path, batch:int=500) -> None:
     # if folder is empty raise error
     if not os.listdir(folder):
         raise ValueError(f"Folder {folder} is empty")
-    df = KAMPING.utils.read_all_tsv_files(folder)
-    proteins = KAMPING.uniprot.uniprot.get_unique_proteins(df, 'up')
+    df = kamping.utils.read_all_tsv_files(folder)
+    proteins = kamping.uniprot.uniprot.get_unique_proteins(df, 'up')
 
     # todo: a naive for batch implementation
     # check Uniprot pagination for a better implementation
