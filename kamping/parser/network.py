@@ -76,11 +76,15 @@ class InteractionParser():
 
         # convert compound value to kegg id if only relation.type is "compound"
         # compound is a list with one element mapped from dict
-        df['value'] = df.apply(lambda row: self.conversion_dictionary.get(row['value']) if row['name'] == 'compound' else row['value'], axis=1)
+        df['value'] =df.apply(lambda row: self.conversion_dictionary.at[row['value'], 'name'] if row['name'] == 'compound' else row['value'], axis=1)
 
-        # Convert entry1 and entry2 id to kegg id
-        df['entry1'] = df['entry1'].map(self.conversion_dictionary)
-        df['entry2'] = df['entry2'].map(self.conversion_dictionary)
+        # add another two columns to indicate type of entry1 and entry2
+        df['entry1_type'] = df['entry1'].map(lambda x: self.conversion_dictionary.at[x, 'type'])
+        df['entry2_type'] = df['entry2'].map(lambda x: self.conversion_dictionary.at[x, 'type'])
+        df['entry1'] = df['entry1'].map(lambda x: self.conversion_dictionary.at[x, 'name'])
+        df['entry2'] = df['entry2'].map(lambda x: self.conversion_dictionary.at[x, 'name'])
+
+
 
         # expand entry1 and entry2 columns
         df = df.explode('entry1').explode('entry2')

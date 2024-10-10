@@ -53,14 +53,18 @@ def test_expand_relation_ECrel_with_valid_input():
         'entry2': 'hsa:2538',
         'type': 'ECrel',
         'value': 'cpd:C00267-90',
-        'name': 'compound'
+        'name': 'compound',
+        'entry1_type': 'gene',
+        'entry2_type': 'gene'
     })
     expected = pd.DataFrame.from_dict({
         'entry1': ['hsa:130589', 'cpd:C00267-90'],
         'entry2': ['cpd:C00267-90', 'hsa:2538'],
         'type': ['PCrel', 'PCrel'],
         'value': ['custom', 'custom'],
-        'name': ['enzyme-enzyme expansion', 'enzyme-enzyme expansion']
+        'name': ['enzyme-enzyme expansion', 'enzyme-enzyme expansion'],
+        'entry1_type': ['gene', 'compound'],
+        'entry2_type': ['compound', 'gene']
     })
     output = expand_relation_ECrel(input)
     pd.testing.assert_frame_equal(expected, output)
@@ -71,14 +75,18 @@ def test_expand_relation_PPrel_with_valid_input():
         'entry2': 'hsa:2538',
         'type': 'PPrel',
         'value': 'cpd:C00267-90',
-        'name': 'compound'
+        'name': 'compound',
+        'entry1_type': 'gene',
+        'entry2_type': 'gene'
     })
     expected = pd.DataFrame.from_dict({
         'entry1': ['hsa:130589', 'cpd:C00267-90'],
         'entry2': ['cpd:C00267-90', 'hsa:2538'],
         'type': ['PCrel', 'PCrel'],
         'value': ['custom', 'custom'],
-        'name': ['protein-protein expansion', 'protein-protein expansion']
+        'name': ['protein-protein expansion', 'protein-protein expansion'],
+        'entry1_type': ['gene', 'compound'],
+        'entry2_type': ['compound', 'gene']
     })
     output = expand_relation_PPrel(input)
     pd.testing.assert_frame_equal(expected, output)

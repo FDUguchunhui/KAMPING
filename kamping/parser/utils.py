@@ -4,7 +4,7 @@ import urllib.request as request
 import numpy as np
 import pandas as pd
 
-def entry_id_conv_dict(root, unique=False):
+def entry_id_conv_dict(root, unique=False) -> pd.DataFrame:
     # This dictionary is the unique version
     # Every item is unique to reveal subgraphs
     entries = [(entry.get('id'), entry.get('name'), entry.get('type')) for entry in root.findall('entry')]
@@ -14,13 +14,12 @@ def entry_id_conv_dict(root, unique=False):
 
     # get unique names for each entry
     if unique:
-        name = [[name + '-' + id for name in names ] for id, names in zip(entries['id'], entries['name'])]
-    else:
-        name = entries['name']
+        entries['name']  = [[name + '-' + id for name in names ] for id, names in zip(entries['id'], entries['name'])]
 
-    conversion_dictionary = dict(zip(entries['id'], name))
+    # set id as the index
+    entries.set_index('id', inplace=True)
 
-    return conversion_dictionary
+    return entries
 
 
 

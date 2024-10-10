@@ -19,8 +19,11 @@ class TestGenesInteractionParser:
 
     xml_data = '''
     <root>
+        <entry id="1" name="gene1" type="gene"/>
+        <entry id="2" name="gene2" type="gene"/>
+        <entry id="3" name="gene3" type="compound"/>
         <relation entry1="1" entry2="2">
-            <subtype name="compound" value="cpd:C00001"/>
+            <subtype name="compound" value="3"/>
         </relation>
     </root>
     '''
@@ -135,8 +138,13 @@ class TestGenesInteractionParser:
     def test_get_edges_with_mixed_data(self):
         xml_data = '''
         <root>
+            <entry id="1" name="gene1" type="gene"/>
+            <entry id="2" name="gene2" type="gene"/>
+            <entry id="3" name="gene3" type="gene"/>
+            <entry id="4" name="gene4" type="gene"/>
+            <entry id="5" name="cpd:C00001" type="compound"/>
             <relation entry1="1" entry2="2">
-                <subtype name="compound" value="cpd:C00001"/>
+                <subtype name="compound" value="5"/>
             </relation>
             <relation entry1="3" entry2="4">
                 <subtype name="activation" value="act"/>
@@ -153,6 +161,8 @@ class TestGenesInteractionParser:
         assert 'type' in edges.columns
         assert 'name' in edges.columns
         assert 'value' in edges.columns
+        assert 'entry1_type' in edges.columns
+        assert 'entry2_type' in edges.columns
 
 
 

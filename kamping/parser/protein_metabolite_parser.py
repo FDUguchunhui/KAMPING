@@ -93,6 +93,7 @@ def expand_relation_ECrel(row: pd.Series):
     new_row1['type'] = 'PCrel'
     new_row1['value'] = "custom"
     new_row1['name'] = "enzyme-enzyme expansion"
+    new_row1['entry2_type'] = 'compound'
 
     new_row2 = row.copy()
     new_row2['entry2'] = row['entry2']
@@ -100,6 +101,7 @@ def expand_relation_ECrel(row: pd.Series):
     new_row2['type'] = 'PCrel'
     new_row2['value'] = 'custom'
     new_row2['name'] = 'enzyme-enzyme expansion'
+    new_row2['entry1_type'] = 'compound'
 
     # combined two series into a DataFrame
     df = pd.concat([new_row1, new_row2], axis=1).transpose()
@@ -114,6 +116,7 @@ def expand_relation_PPrel(row: pd.Series):
     new_row1['type'] = 'PCrel'
     new_row1['value'] = 'custom'
     new_row1['name'] = 'protein-protein expansion'
+    new_row1['entry2_type'] = 'compound'
 
     new_row2 = row.copy()
     new_row2['entry2'] = row['entry2']
@@ -121,6 +124,7 @@ def expand_relation_PPrel(row: pd.Series):
     new_row2['type'] = 'PCrel'
     new_row2['value'] = 'custom'
     new_row2['name'] = 'protein-protein expansion'
+    new_row2['entry1_type'] = 'compound'
 
     # combined two series into a DataFrame
     df = pd.concat([new_row1, new_row2], axis=1).transpose()
