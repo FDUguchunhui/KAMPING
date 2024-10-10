@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import pytest
+import pandas.testing as pdt
 
 from kamping.parser.utils import entry_id_conv_dict
 from kamping.utils import read_all_tsv_files
@@ -50,7 +51,10 @@ class TestEntryIdConvDict:
         '''
         root = ET.fromstring(xml_data)
         result = entry_id_conv_dict(root, unique=True)
-        assert result == {'1': ['gene1-1', 'gene2-1'], '2': ['gene3-2']}
+        expected = pd.DataFrame.from_dict( {'1': {'name': ['gene1-1', 'gene2-1'], 'type':'gene'}, '2': {'name':['gene3-2'], 'type':'gene'}}, orient='index')
+        # set index name
+        expected.index.name = 'id'
+        pdt.assert_frame_equal(result, expected)
 
 
     def test_entry_id_conv_dict_with_non_unique_entries(self):
@@ -63,7 +67,10 @@ class TestEntryIdConvDict:
         root = ET.fromstring(xml_data)
         # non-unique entries
         result = entry_id_conv_dict(root, unique=False)
-        assert result == {'1': ['gene1', 'gene2'], '2': ['gene3']}
+        expected = pd.DataFrame.from_dict( {'1': {'name': ['gene1', 'gene2'], 'type':'gene'}, '2': {'name':['gene3'], 'type':'gene'}}, orient='index')
+       # set index name
+        expected.index.name = 'id'
+        pdt.assert_frame_equal(result, expected)
 
     def test_entry_id_conv_dict_with_empty_entries(self):
         xml_data = '''
@@ -71,7 +78,7 @@ class TestEntryIdConvDict:
         '''
         root = ET.fromstring(xml_data)
         result = entry_id_conv_dict(root, unique=True)
-        assert result == {}
+        assert result.empty
 
     def test_entry_id_conv_dict_with_mixed_entries(self):
         xml_data = '''
@@ -83,4 +90,9 @@ class TestEntryIdConvDict:
         '''
         root = ET.fromstring(xml_data)
         result = entry_id_conv_dict(root, unique=True)
-        assert result == {'1': ['gene1-1', 'gene2-1'], '2': ['gene3-2'], '3': ['compound1-3']}
+
+        expected = pd.DataFrame.from_dict( {'1': {'name': ['gene1-1', 'gene2-1'], 'type':'gene'}, '2': {'name':['gene3-2'], 'type':'gene'},
+                                            '3': {'name':['compound1-3'], 'type':'compound'}}, orient='index')
+    # set index name
+        expected.index.name = 'id'
+        pdt.assert_frame_equal(result, expected)

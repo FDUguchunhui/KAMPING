@@ -3,14 +3,14 @@ import io
 import pytest
 import pandas as pd
 from pathlib import Path
-from kamping.parser.network import InteractionParser
+from kamping.parser.network import Interaction
 from kamping.main import network
 import xml.etree.ElementTree as ET
 from kamping.main import  Type, Identifier_Conversion
 
 def parse_kgml_file(file_path, **kwargs):
-    parser = InteractionParser(input_data=file_path, **kwargs)
-    return parser.parse_file()
+    interaction = Interaction(input_data=file_path, **kwargs)
+    return interaction.data
 
 
 class TestGenesInteractionParser:
@@ -98,7 +98,7 @@ class TestGenesInteractionParser:
     def test_get_edges_with_valid_data(self):
 
 
-        parser = InteractionParser(input_data=self.xml_data, type='gene-only', unique=False, id_conversion=None, names=False, verbose=False)
+        parser = Interaction(input_data=self.xml_data, type='gene-only', unique=False, id_conversion=None, names=False, verbose=False)
         edges = parser.get_edges()
         assert not edges.empty
         assert 'entry1' in edges.columns
@@ -112,9 +112,9 @@ class TestGenesInteractionParser:
         <root></root>
         '''
         xml_data = io.StringIO(xml_data)
-        parser = InteractionParser(input_data=xml_data, type='gene-only', unique=False, id_conversion=None, names=False, verbose=False)
         with pytest.raises(FileNotFoundError):
-            parser.get_edges()
+            interaction = Interaction(input_data=xml_data, type='gene-only', unique=False, id_conversion=None, names=False, verbose=False)
+
 
     def test_get_edges_with_no_relations(self):
         xml_data = '''
@@ -124,9 +124,9 @@ class TestGenesInteractionParser:
         </root>
         '''
         xml_data = io.StringIO(xml_data)
-        parser = InteractionParser(input_data=xml_data, type='gene-only', unique=False, id_conversion=None, names=False, verbose=False)
         with pytest.raises(FileNotFoundError):
-            parser.get_edges()
+            parser = Interaction(input_data=xml_data, type='gene-only', unique=False, id_conversion=None, names=False, verbose=False)
+
 
     def test_remove_undefined_entries(self):
         output_df = parse_kgml_file(self.test_file, type="gene-only", id_conversion='uniprot',
@@ -143,16 +143,16 @@ class TestGenesInteractionParser:
             <entry id="3" name="gene3" type="gene"/>
             <entry id="4" name="gene4" type="gene"/>
             <entry id="5" name="cpd:C00001" type="compound"/>
-            <relation entry1="1" entry2="2">
+            <relation entry1="1" entry2="2" type="PPrel">
                 <subtype name="compound" value="5"/>
             </relation>
-            <relation entry1="3" entry2="4">
+            <relation entry1="3" entry2="4" type="PPrel">
                 <subtype name="activation" value="act"/>
             </relation>
         </root>
         '''
         xml_data = io.StringIO(xml_data)
-        parser = InteractionParser(input_data=xml_data, type='gene-only', unique=False, id_conversion=None, names=False, verbose=False)
+        parser = Interaction(input_data=xml_data, type='gene-only', unique=False, id_conversion=None, names=False, verbose=False)
         edges = parser.get_edges()
         assert not edges.empty
         assert len(edges) == 2
@@ -164,6 +164,24 @@ class TestGenesInteractionParser:
         assert 'entry1_type' in edges.columns
         assert 'entry2_type' in edges.columns
 
-
+    # test auto_relation_fix
+    def test_auto_relation_fix(self):
+        xml_data = '''
+            <pathway name="path:hsa00010" org="hsa" number="00010"
+                 title="Glycolysis / Gluconeogenesis"
+                 image="https://www.kegg.jp/kegg/pathway/hsa/hsa00010.png"
+                 link="https://www.kegg.jp/kegg-bin/show_pathway?hsa00010">
+            <entry id="1" name="gene1" type="gene"/>
+            <entry id="5" name="cpd:C00001" type="compound"/>
+            <relation entry1="1" entry2="5" type="PPrel">
+              <subtype name="activation" value="act"/>
+            </relation>
+        </pathway>
+        '''
+        xml_data = io.StringIO(xml_data)
+        interaction = Interaction(input_data=xml_data, type='MPI', auto_relation_fix='remove', unique=False, id_conversion=None, names=False, verbose=False)
+        assert interaction.data.empty
+        # interaction = Interaction(input_data=xml_data, type='MPI', auto_relation_fix='fix', unique=False, id_conversion=None, names=False, verbose=False)
+        # assert len(interaction.data) == 1
 
 

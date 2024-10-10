@@ -15,7 +15,7 @@ from typing_extensions import  Annotated
 import typer
 from pathlib import Path
 
-from kamping.parser.network import InteractionParser
+from kamping.parser.network import Interaction
 from kamping.parser.call import kgml
 
 app = typer.Typer()
@@ -77,23 +77,23 @@ def network(
         for file in files:
             try:
                 logging.info(f'Parsing {file}...')
-                gip = InteractionParser(type=type.value, input_data=file,
-                                        id_conversion=id_conversion.value,
-                                        unique=unique,
-                                        verbose=verbose)
-                df_out = gip.parse_file()
+                interaction = Interaction(type=type.value, input_data=file,
+                                  id_conversion=id_conversion.value,
+                                  unique=unique,
+                                  verbose=verbose)
+                df_out = interaction.data
                 df_out.to_csv(out_dir / f'{file.stem}.tsv', sep='\t', index=False)
             except Exception as e:
                 typer.echo(typer.style(f'Error when parsing {file}: {e}', fg=typer.colors.RED, bold=True))
                 continue
     else:
         logging.info(f'Parsing {input_data}...')
-        gip = InteractionParser(type=type,
-                                input_data=input_data,
-                                id_conversion=id_conversion,
-                                unique=unique,
-                                verbose=verbose)
-        df_out = gip.parse_file()
+        interaction = Interaction(type=type,
+                          input_data=input_data,
+                          id_conversion=id_conversion,
+                          unique=unique,
+                          verbose=verbose)
+        df_out = interaction.data
         df_out.to_csv(out_dir / f'{Path(input_data).stem}.tsv', sep='\t', index=False)
 
 
@@ -120,9 +120,4 @@ def network(
     #         typer.echo(f'No output directory provided. All files will be saved to:\n{results}')
     #         results.mkdir(exist_ok = True)
     #         df.to_csv(results / 'mpi.tsv', sep='\t', index=False)
-
-
-
-if __name__ == '__main__':
-    network(input_data='data/kgml_hsa/hsa051d40.xml', type='MPI', id_conversion='uniprot', out_dir='data/converted')
 
