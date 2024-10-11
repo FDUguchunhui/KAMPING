@@ -8,6 +8,8 @@ Created on Thu Jun 29 20:49:11 2023
 import logging
 from enum import Enum
 
+import click
+
 from kamping.parser.convert import Converter
 
 logging.basicConfig(level=logging.INFO)
@@ -20,23 +22,17 @@ from pathlib import Path
 from kamping.parser.network import KeggGraph
 from kamping.parser.call import kgml
 
-app = typer.Typer()
 
-class Type(str, Enum):
-    gene_only = 'gene-only'
-    MPI = 'MPI'
-    original = 'original'
 
-class Identifier_Conversion(str, Enum):
-    uniprot = 'uniprot'
-    ncbi = 'ncbi'
-    none = 'None'
+@click.group()
+def cli():
+    pass
 
-@app.command()
-def get_kgml(species: str = typer.Argument(..., help='the species to get kgml files'),
-             out_dir: Union[str, None] = typer.Option(None, help='Directory to save results. '
-                                                                 'If not provided, results will be saved to the current working directory.')
-             ):
+
+@click.command()
+@click.argument('species', type=str)
+@click.option('--out_dir', type=str, default=None, help='Directory to save results. If not provided, results will be saved in the current working directory.')
+def get_kgml(species: str, out_dir: Union[str, None] = None):
     """
     Acquires all KGML files for a given species. Use a KEGG species
     identification, usually a 3 to 4 letter organism code, as input. Handles
@@ -48,16 +44,16 @@ def get_kgml(species: str = typer.Argument(..., help='the species to get kgml fi
 
     kgml(species, out_dir)
 
-@app.command()
-def network(
-            type: Annotated[Type, typer.Option(help='the type of network')],
-            species: str = typer.Argument(..., help='the target species, e.g. hsa for human'),
-            input_data: str = typer.Argument(..., help='Path to KGML file or folder of KGML files'),
-            id_conversion: Annotated[Identifier_Conversion, typer.Option(help=' convert KEGG gene id to which identifier ')] = None,
-            unique: Annotated[bool, typer.Option(help='Flag to return unique genes with terminal modifiers.')] = False,
-            out_dir: Union[str, None] = typer.Option(None, help='Directory to save results. '
-                                                              'If not provided, results will be saved in the current working directory.'),
-            verbose: Annotated[bool, typer.Option(help='Flag to print progress.')] = False):
+@click.command()
+@click.option('--type', type=click.Choice(['gene-only', 'mpi', 'original']), required=True, help='The type of network')
+@click.argument('species', type=str)
+@click.argument('input_data', type=str)
+@click.option('--id_conversion', type=click.Choice(['ncbi', 'uniprot']), default=None, help='Convert KEGG gene id to which identifier')
+@click.option('--unique', is_flag=True, help='Flag to return unique genes with terminal modifiers')
+@click.option('--out_dir', type=str, default=None, help='Directory to save results. If not provided, results will be saved in the current working directory.')
+@click.option('--verbose', is_flag=True, help='Flag to print progress')
+def network(type: str, species: str, input_data: str, out_dir:str,
+            id_conversion: Union[str, None] = None, unique: bool = False, verbose:bool = False):
     """
     Converts a folder of KGML files or a single KGML file into a
     edgelist of genes that can be used in graph analysis. If -u/--unique flag
@@ -75,15 +71,15 @@ def network(
         out_dir.mkdir(parents=True, exist_ok=True)
 
     id_converter = None
-    if id_conversion.value != 'None':
-        id_converter = Converter(species, target=id_conversion.value, unique=unique, verbose=verbose)
+    if id_conversion is None:
+        id_converter = Converter(species, target=id_conversion, unique=unique, verbose=verbose)
 
     if Path(input_data).is_dir():
         files = sorted(Path(input_data).glob('*.xml'))
         for file in files:
             try:
                 logging.info(f'Parsing {file}...')
-                interaction = KeggGraph(type=type.value, input_data=file,
+                interaction = KeggGraph(type=type, input_data=file,
                                         id_converter=id_converter,
                                         unique=unique,
                                         verbose=verbose)
@@ -101,3 +97,7 @@ def network(
                                 verbose=verbose)
         df_out = interaction.interaction
         df_out.to_csv(out_dir / f'{Path(input_data).stem}.tsv', sep='\t', index=False)
+
+
+if __name__ == '__main__':
+    cli()

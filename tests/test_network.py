@@ -7,18 +7,7 @@ from pathlib import Path
 from kamping.parser.network import KeggGraph
 from kamping.main import network
 import xml.etree.ElementTree as ET
-from kamping.main import  Type, Identifier_Conversion
-
-class Type(str, Enum):
-    gene_only = 'gene-only'
-    MPI = 'MPI'
-    original = 'original'
-
-class Identifier_Conversion(str, Enum):
-    uniprot = 'uniprot'
-    ncbi = 'ncbi'
-    none = 'None'
-
+from click.testing import CliRunner
 
 def parse_kgml_file(file_path, **kwargs):
     interaction = KeggGraph(input_data=file_path, **kwargs)
@@ -56,7 +45,8 @@ class TestGenesInteractionParser:
 
         output_dir = Path('output')
         output_dir.mkdir(parents=True, exist_ok=True)
-        network('gene-only', 'hsa', self.test_file, out_dir='output', id_conversion=Identifier_Conversion.none, unique=False, verbose=False)
+        runner = CliRunner()
+        runner.invoke(network, ['--type', 'gene-only', 'hsa', self.test_file, '--out_dir', 'output'])
         output_files = list(output_dir.glob('*.tsv'))
         assert len(output_files) > 0
         for file in output_files:
@@ -99,7 +89,9 @@ class TestGenesInteractionParser:
     def test_MPI_parser_directory(self):
         output_dir = Path('output')
         output_dir.mkdir(parents=True, exist_ok=True)
-        network(Type.MPI, self.test_file, out_dir='output', id_conversion=Identifier_Conversion.none, unique=False, verbose=False)
+        runner = CliRunner()
+        # runner.invoke(network, ['--type', 'MPI', 'hsa', self.test_file, '--out_dir', 'output', '--id_conversion', 'uniprot'])
+        network(type='mpi', species=self.test_file, out_dir='output', id_conversion=None, unique=False, verbose=False)
         output_files = list(output_dir.glob('*.tsv'))
         assert len(output_files) > 0
         for file in output_files:
