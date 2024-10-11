@@ -8,6 +8,8 @@ Created on Thu Jun 29 20:49:11 2023
 import logging
 from enum import Enum
 
+from kamping.parser.convert import Converter
+
 logging.basicConfig(level=logging.INFO)
 import sys
 from typing import Union
@@ -15,7 +17,7 @@ from typing_extensions import  Annotated
 import typer
 from pathlib import Path
 
-from kamping.parser.network import Interaction
+from kamping.parser.network import KeggGraph
 from kamping.parser.call import kgml
 
 app = typer.Typer()
@@ -28,7 +30,7 @@ class Type(str, Enum):
 class Identifier_Conversion(str, Enum):
     uniprot = 'uniprot'
     ncbi = 'ncbi'
-    none = None
+    none = 'None'
 
 @app.command()
 def get_kgml(species: str = typer.Argument(..., help='the species to get kgml files'),
@@ -46,10 +48,10 @@ def get_kgml(species: str = typer.Argument(..., help='the species to get kgml fi
 
     kgml(species, out_dir)
 
-#todo: check the default of boolean
 @app.command()
 def network(
             type: Annotated[Type, typer.Option(help='the type of network')],
+            species: str = typer.Argument(..., help='the target species, e.g. hsa for human'),
             input_data: str = typer.Argument(..., help='Path to KGML file or folder of KGML files'),
             id_conversion: Annotated[Identifier_Conversion, typer.Option(help=' convert KEGG gene id to which identifier ')] = None,
             unique: Annotated[bool, typer.Option(help='Flag to return unique genes with terminal modifiers.')] = False,
@@ -72,52 +74,30 @@ def network(
         # create the output directory if it does not exist
         out_dir.mkdir(parents=True, exist_ok=True)
 
+    id_converter = None
+    if id_conversion.value != 'None':
+        id_converter = Converter(species, target=id_conversion.value, unique=unique, verbose=verbose)
+
     if Path(input_data).is_dir():
         files = sorted(Path(input_data).glob('*.xml'))
         for file in files:
             try:
                 logging.info(f'Parsing {file}...')
-                interaction = Interaction(type=type.value, input_data=file,
-                                  id_conversion=id_conversion.value,
-                                  unique=unique,
-                                  verbose=verbose)
-                df_out = interaction.data
+                interaction = KeggGraph(type=type.value, input_data=file,
+                                        id_converter=id_converter,
+                                        unique=unique,
+                                        verbose=verbose)
+                df_out = interaction.interaction
                 df_out.to_csv(out_dir / f'{file.stem}.tsv', sep='\t', index=False)
             except Exception as e:
                 typer.echo(typer.style(f'Error when parsing {file}: {e}', fg=typer.colors.RED, bold=True))
                 continue
     else:
         logging.info(f'Parsing {input_data}...')
-        interaction = Interaction(type=type,
-                          input_data=input_data,
-                          id_conversion=id_conversion,
-                          unique=unique,
-                          verbose=verbose)
-        df_out = interaction.data
+        interaction = KeggGraph(type=type,
+                                input_data=input_data,
+                                id_converter=id_converter,
+                                unique=unique,
+                                verbose=verbose)
+        df_out = interaction.interaction
         df_out.to_csv(out_dir / f'{Path(input_data).stem}.tsv', sep='\t', index=False)
-
-
-    # @cli.command()
-    # @click.argument('file')
-    # @click.option('-r', '--results', required = False)
-    # def from_mixed_to_mpi(file: str, results: str = None):
-    #     """
-    #     Converts the mixed file to metabolite-protein interactions.
-    #     """
-    #     # remove the maplink, GErel, and PPrel
-    #     df = MPIParser().parse(file)
-    #     # export the DataFrame to a TSV file
-    #     if results is not None:
-    #         results = Path(results)
-    #         if results.exists() == False:
-    #             typer.echo(f'Directory {results} does not exist or is invalid. Please input a valid directory...')
-    #             sys.exit()
-    #         else:
-    #             df.to_csv(results / 'mpi.tsv', sep='\t', index=False)
-    #     else:
-    #         wd = Path.cwd()
-    #         results = wd / 'kgml_{}'.format(species)
-    #         typer.echo(f'No output directory provided. All files will be saved to:\n{results}')
-    #         results.mkdir(exist_ok = True)
-    #         df.to_csv(results / 'mpi.tsv', sep='\t', index=False)
-

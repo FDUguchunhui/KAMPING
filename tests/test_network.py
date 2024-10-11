@@ -1,16 +1,28 @@
 import io
+from enum import Enum
 
 import pytest
 import pandas as pd
 from pathlib import Path
-from kamping.parser.network import Interaction
+from kamping.parser.network import KeggGraph
 from kamping.main import network
 import xml.etree.ElementTree as ET
 from kamping.main import  Type, Identifier_Conversion
 
+class Type(str, Enum):
+    gene_only = 'gene-only'
+    MPI = 'MPI'
+    original = 'original'
+
+class Identifier_Conversion(str, Enum):
+    uniprot = 'uniprot'
+    ncbi = 'ncbi'
+    none = 'None'
+
+
 def parse_kgml_file(file_path, **kwargs):
-    interaction = Interaction(input_data=file_path, **kwargs)
-    return interaction.data
+    interaction = KeggGraph(input_data=file_path, **kwargs)
+    return interaction.interaction
 
 
 class TestGenesInteractionParser:
@@ -41,9 +53,10 @@ class TestGenesInteractionParser:
         assert 'entry2' in output_df.columns
 
     def test_genes_parser_directory(self):
+
         output_dir = Path('output')
         output_dir.mkdir(parents=True, exist_ok=True)
-        network('gene-only', self.test_file, out_dir='output', id_conversion=None, unique=False, verbose=False)
+        network('gene-only', 'hsa', self.test_file, out_dir='output', id_conversion=Identifier_Conversion.none, unique=False, verbose=False)
         output_files = list(output_dir.glob('*.tsv'))
         assert len(output_files) > 0
         for file in output_files:
@@ -86,7 +99,7 @@ class TestGenesInteractionParser:
     def test_MPI_parser_directory(self):
         output_dir = Path('output')
         output_dir.mkdir(parents=True, exist_ok=True)
-        network("MPI", self.test_file, out_dir='output', id_conversion='uniprot', unique=False, verbose=False)
+        network(Type.MPI, self.test_file, out_dir='output', id_conversion=Identifier_Conversion.none, unique=False, verbose=False)
         output_files = list(output_dir.glob('*.tsv'))
         assert len(output_files) > 0
         for file in output_files:
@@ -98,7 +111,7 @@ class TestGenesInteractionParser:
     def test_get_edges_with_valid_data(self):
 
 
-        parser = Interaction(input_data=self.xml_data, type='gene-only', unique=False, id_conversion=None, names=False, verbose=False)
+        parser = KeggGraph(input_data=self.xml_data, type='gene-only', unique=False, id_conversion=None, names=False, verbose=False)
         edges = parser.get_edges()
         assert not edges.empty
         assert 'entry1' in edges.columns
@@ -113,7 +126,7 @@ class TestGenesInteractionParser:
         '''
         xml_data = io.StringIO(xml_data)
         with pytest.raises(FileNotFoundError):
-            interaction = Interaction(input_data=xml_data, type='gene-only', unique=False, id_conversion=None, names=False, verbose=False)
+            interaction = KeggGraph(input_data=xml_data, type='gene-only', unique=False, id_conversion=None, names=False, verbose=False)
 
 
     def test_get_edges_with_no_relations(self):
@@ -125,7 +138,7 @@ class TestGenesInteractionParser:
         '''
         xml_data = io.StringIO(xml_data)
         with pytest.raises(FileNotFoundError):
-            parser = Interaction(input_data=xml_data, type='gene-only', unique=False, id_conversion=None, names=False, verbose=False)
+            parser = KeggGraph(input_data=xml_data, type='gene-only', unique=False, id_conversion=None, names=False, verbose=False)
 
 
     def test_remove_undefined_entries(self):
@@ -152,7 +165,7 @@ class TestGenesInteractionParser:
         </root>
         '''
         xml_data = io.StringIO(xml_data)
-        parser = Interaction(input_data=xml_data, type='gene-only', unique=False, id_conversion=None, names=False, verbose=False)
+        parser = KeggGraph(input_data=xml_data, type='gene-only', unique=False, id_conversion=None, names=False, verbose=False)
         edges = parser.get_edges()
         assert not edges.empty
         assert len(edges) == 2
@@ -179,8 +192,8 @@ class TestGenesInteractionParser:
         </pathway>
         '''
         xml_data = io.StringIO(xml_data)
-        interaction = Interaction(input_data=xml_data, type='MPI', auto_relation_fix='remove', unique=False, id_conversion=None, names=False, verbose=False)
-        assert interaction.data.empty
+        interaction = KeggGraph(input_data=xml_data, type='MPI', auto_relation_fix='remove', unique=False, id_conversion=None, names=False, verbose=False)
+        assert interaction.interaction.empty
         # interaction = Interaction(input_data=xml_data, type='MPI', auto_relation_fix='fix', unique=False, id_conversion=None, names=False, verbose=False)
         # assert len(interaction.data) == 1
 

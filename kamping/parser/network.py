@@ -6,7 +6,7 @@
 """
 
 import json
-from typing import Union
+from typing import Union, Any
 from typing_extensions import Literal
 import typer
 import pandas as pd
@@ -17,7 +17,7 @@ from kamping.parser import convert
 from kamping.parser import protein_metabolite_parser
 
 
-class Interaction():
+class KeggGraph():
     ''''
     undefined nodes are removed from the final output
     '''
@@ -27,7 +27,7 @@ class Interaction():
                  type: Literal['gene-only', 'MPI', 'original'],
                  auto_relation_fix: Union[None, Literal['fix', 'remove']] = 'fix',
                  unique: bool = False,
-                 id_conversion: Union[Literal['uniprot', 'ncbi'], None] = None,
+                 id_converter: Any = None,
                  names: bool = False,
                  verbose: bool = False):
         '''
@@ -35,7 +35,7 @@ class Interaction():
 
         '''
         self.auto_relation_fix = auto_relation_fix
-        self.id_conversion = id_conversion
+        self.id_converter = id_converter
         self.input_data = input_data
         self.type = type
         self.unique = unique
@@ -43,43 +43,42 @@ class Interaction():
         self.verbose = verbose
         self.root =  ET.parse(input_data).getroot()
         self.conversion_dictionary = utils.entry_id_conv_dict(self.root, unique=unique)
-        self.data = self.get_edges()
+        self.interaction = self.get_edges()
+        self.mol_embedding = None
 
         if self.verbose:
             typer.echo(typer.style(f"Now parsing: {self.root.get('title')}...", fg=typer.colors.GREEN, bold=False))
         # Check for compounds or undefined nodes
-        has_compounds_or_undefined = not self.data[(self.data['entry1'].str.startswith('cpd:')) | (self.data['entry2'].str.startswith('cpd:')) | (self.data['entry1'].str.startswith('undefined')) | (self.data['entry2'].str.startswith('undefined'))].empty
+        has_compounds_or_undefined = not self.interaction[(self.interaction['entry1'].str.startswith('cpd:')) | (self.interaction['entry2'].str.startswith('cpd:')) | (self.interaction['entry1'].str.startswith('undefined')) | (self.interaction['entry2'].str.startswith('undefined'))].empty
 
         # if not mixed, remove "path" entries and propagate compounds
         if self.type == 'gene-only' :
             # Remove edges with "path" entries
-            self.data = self.data[(~self.data['entry1'].str.startswith('path')) & (~self.data['entry2'].str.startswith('path'))]
+            self.interaction = self.interaction[(~self.interaction['entry1'].str.startswith('path')) & (~self.interaction['entry2'].str.startswith('path'))]
             if has_compounds_or_undefined:
-                self.data = self._propagate_compounds(self.data)
+                self.interaction = self._propagate_compounds(self.interaction)
         elif self.type == 'MPI':
             # remove interaction relationship with type "maplink"
             # which will leave "ECrel", "GErel", and "PPrel", and "PCrel"
-            self.data = self.data[self.data['type'] != 'maplink']
+            self.interaction = self.interaction[self.interaction['type'] != 'maplink']
             MPI_parser = protein_metabolite_parser.ProteinMetabliteParser(keep_PPI=True)
-            self.data = MPI_parser.parse_dataframe(self.data)
+            self.interaction = MPI_parser.parse_dataframe(self.interaction)
         elif self.type == 'original':
             pass
         else:
             raise ValueError(f'Invalid type: {self.type}')
 
-        if self.id_conversion is not None:
+        if self.id_converter is not None:
             # convert the edges to the desired id type
-            id_converter = convert.Converter(species=self.root.get('org'), target=self.id_conversion,
-                                             unique=self.unique)
-            self.data = id_converter.convert_dataframe(self.data)
+            self.interaction = self.id_converter.convert_dataframe(self.interaction)
 
         # remove row with undefined entries
-        self.data = self.data[~self.data['entry1'].str.startswith('undefined')]
-        self.data = self.data[~self.data['entry2'].str.startswith('undefined')]
+        self.interaction = self.interaction[~self.interaction['entry1'].str.startswith('undefined')]
+        self.interaction = self.interaction[~self.interaction['entry2'].str.startswith('undefined')]
 
         # auto_relation_fix
         if self.auto_relation_fix is not None:
-            self.data = self.auto_fix_relation(self.data)
+            self.auto_fix_relation()
 
     def get_edges(self) -> pd.DataFrame:
         """
@@ -154,26 +153,28 @@ class Interaction():
         df0 = pd.concat([xdf, pd.DataFrame(new_edges, columns=['entry1', 'entry2', 'type', 'value', 'name'])]).drop_duplicates()
         return df0[~df0['entry1'].str.startswith(('cpd', 'undefined', 'path')) & ~df0['entry2'].str.startswith(('cpd', 'undefined', 'path'))]
 
-    def auto_fix_relation(self, df: pd.DataFrame) -> pd.DataFrame:
+    def auto_fix_relation(self):
         if self.auto_relation_fix == 'fix':
             # when entry1_type == "gene" and entry2_type == "gene" and type != "PPrel" or "GErel" then type = "PPrel"
-            df.loc[(df['entry1_type'] == 'gene') & (df['entry2_type'] == 'gene') & (~df['type'].isin(['PPrel', 'GErel', 'ECrel']))] = 'PPrel'
+            self.interaction.loc[(self.interaction['entry1_type'] == 'gene') & (self.interaction['entry2_type'] == 'gene') & (~self.interaction['type'].isin(['PPrel', 'GErel', 'ECrel']))] = 'PPrel'
             # when entry1_type == "gene" and entry2_type == "compound" and type != "PCrel" then type = "PCrel"
-            df.loc[(df['entry1_type'] == 'gene') & (df['entry2_type'] == 'compound') & (df['type'] != 'PCrel')] = 'PCrel'
+            self.interaction.loc[(self.interaction['entry1_type'] == 'gene') & (self.interaction['entry2_type'] == 'compound') & (self.interaction['type'] != 'PCrel')] = 'PCrel'
             # when entry1_type == "compound" and entry2_type == "gene" and type != "PCrel" then type = "PCrel"
-            df.loc[(df['entry1_type'] == 'compound') & (df['entry2_type'] == 'gene') & (df['type'] != 'PCrel')] = 'PCrel'
+            self.interaction.loc[(self.interaction['entry1_type'] == 'compound') & (self.interaction['entry2_type'] == 'gene') & (self.interaction['type'] != 'PCrel')] = 'PCrel'
             # when entry1_type == "compound" and entry2_type == "compound" remove the row
             # todo: need to mute this when try to get metablolite only
-            df = df[~((df['entry1_type'] == 'compound') & (df['entry2_type'] == 'compound'))]
+            self.interaction = self.interaction[~((self.interaction['entry1_type'] == 'compound') & (self.interaction['entry2_type'] == 'compound'))]
         elif self.auto_relation_fix == 'remove':
             # when entry1_type == "gene" and entry2_type == "gene" and type != "PPrel" or "GErel" then type = "PPrel"
-            df = df[~(df['entry1_type'] == 'gene') & (df['entry2_type'] == 'gene') & (~df['type'].isin(['PPrel', 'GErel', 'ECrel']))]
+            self.interaction = self.interaction[~(self.interaction['entry1_type'] == 'gene') & (self.interaction['entry2_type'] == 'gene') & (~self.interaction['type'].isin(['PPrel', 'GErel', 'ECrel']))]
             # when entry1_type == "gene" and entry2_type == "compound" and type != "PCrel" then type = "PCrel"
-            df = df[~(df['entry1_type'] == 'gene') & (df['entry2_type'] == 'compound') & (df['type'] != 'PCrel')]
+            self.interaction = self.interaction[~(self.interaction['entry1_type'] == 'gene') & (self.interaction['entry2_type'] == 'compound') & (self.interaction['type'] != 'PCrel')]
             # when entry1_type == "compound" and entry2_type == "gene" and type != "PCrel" then type = "PCrel"
-            df = df[~(df['entry1_type'] == 'compound') & (df['entry2_type'] == 'gene') & (df['type'] != 'PCrel')]
+            self.interaction = self.interaction[~(self.interaction['entry1_type'] == 'compound') & (self.interaction['entry2_type'] == 'gene') & (self.interaction['type'] != 'PCrel')]
             # when entry1_type == "compound" and entry2_type == "compound" remove the row
             # todo: need to mute this when try to get metablolite only
-            df = df[~((df['entry1_type'] == 'compound') & (df['entry2_type'] == 'compound'))]
+            self.interaction = self.interaction[~((self.interaction['entry1_type'] == 'compound') & (self.interaction['entry2_type'] == 'compound'))]
 
-        return df
+
+    def get_mol_embedding(self):
+        return self.mol_embedding

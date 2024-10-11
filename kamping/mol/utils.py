@@ -10,7 +10,6 @@ def fetch_mol_file_string(compound_id):
     molFile = requests.get(urlStr)
     return(str(molFile.text))
 
-
 def get_smiles(mol_file_string):
     # Use RDKit to convert the mol file string to a SMILES.
     mol = Chem.MolFromMolBlock(mol_file_string);

@@ -8,7 +8,7 @@ from kamping.mol.utils import get_unique_compound_values, fetch_mol_file_string,
 from kamping.utils import read_all_tsv_files
 
 
-def mol_scrapper(input_data:str, output_file: str):
+def scrape_mol(input_data:str, output_file: str):
     '''
     Function to scrap mol files from KEGG database
     '''
@@ -54,4 +54,4 @@ def mol_scrapper(input_data:str, output_file: str):
 
 if __name__ == '__main__':
     # for test
-    mol_scrapper('data/mixed_output_PC', 'data/mol_files/smiles_file.tsv')
+    scrape_mol('data/mixed_output_PC', 'data/mol_files/smiles_file.tsv')
