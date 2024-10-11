@@ -90,8 +90,7 @@ class TestGenesInteractionParser:
         output_dir = Path('output')
         output_dir.mkdir(parents=True, exist_ok=True)
         runner = CliRunner()
-        # runner.invoke(network, ['--type', 'MPI', 'hsa', self.test_file, '--out_dir', 'output', '--id_conversion', 'uniprot'])
-        network(type='mpi', species=self.test_file, out_dir='output', id_conversion=None, unique=False, verbose=False)
+        runner.invoke(network, ['--type', 'MPI', 'hsa', self.test_file, '--out_dir', 'output', '--id_conversion', 'uniprot'])
         output_files = list(output_dir.glob('*.tsv'))
         assert len(output_files) > 0
         for file in output_files:
