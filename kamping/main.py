@@ -29,7 +29,7 @@ def cli():
     pass
 
 
-@click.command()
+@cli.command()
 @click.argument('species', type=str)
 @click.option('--out_dir', type=str, default=None, help='Directory to save results. If not provided, results will be saved in the current working directory.')
 def get_kgml(species: str, out_dir: Union[str, None] = None):
@@ -44,7 +44,7 @@ def get_kgml(species: str, out_dir: Union[str, None] = None):
 
     kgml(species, out_dir)
 
-@click.command()
+@cli.command()
 @click.option('--type', type=click.Choice(['gene-only', 'mpi', 'original']), required=True, help='The type of network')
 @click.argument('species', type=str)
 @click.argument('input_data', type=str)

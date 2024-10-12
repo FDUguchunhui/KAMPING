@@ -60,7 +60,6 @@ class SmilesFileTransformer():
         valid_row_id = df[~df['ROMol'].isna()][id_col].tolist()
         df = df.dropna(subset=['ROMol'])
         # get the molecular vector
-
         mol_embeddings = self.transformer.transform(df['ROMol'])
         return valid_row_id, mol_embeddings
 

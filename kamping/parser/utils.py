@@ -1,6 +1,8 @@
 import re
 from collections import defaultdict
 import urllib.request as request
+
+import h5py
 import numpy as np
 import pandas as pd
 
@@ -143,3 +145,26 @@ def get_conversion_dictionary(species, target):
         else:
             d[key].append(value)
     return d
+
+
+def load_embedding_from_h5(file_path):
+    '''
+    Load the embedding from a h5 file
+    '''
+    with h5py.File(file_path, 'r') as h5file:
+        embeddings = {key: value[()] for key, value in h5file.items()}
+    return embeddings
+
+
+def get_unique_proteins(df):
+    '''
+    Get unique values from column entry1 and entry2 combined.
+    '''
+    # get all emtries from entry1 if entry1_type is protein
+    # get all entries from entry2 if entry2_type is protein
+    entry1_protein = df[df['entry1_type'] == 'gene']['entry1']
+    entry2_protein = df[df['entry2_type'] == 'gene']['entry2']
+    proteins = pd.concat([entry1_protein, entry2_protein]).unique()
+
+    # remove prefix
+    return proteins

@@ -10,7 +10,7 @@ packages = [
 ]
 
 [tool.poetry.scripts]
-KAMPING = "kamping.main"
+KAMPING = "kamping.main:cli"
 
 [tool.poetry.dependencies]
 python = "^3.10"

@@ -1,7 +1,6 @@
 import logging
 
 import pandas as pd
-import kamping.mol.utils
 import re
 import time
 import json
@@ -12,6 +11,7 @@ import requests
 from requests.adapters import HTTPAdapter, Retry
 
 import kamping.utils
+from kamping.parser.utils import get_unique_proteins
 
 POLLING_INTERVAL = 3
 API_URL = "https://rest.uniprot.org"
@@ -65,6 +65,7 @@ def check_id_mapping_results_ready(job_id:str) -> bool:
             else:
                 raise Exception(j["jobStatus"])
         else:
+            # when no matching return empty list but it is not an error
             return bool(j["results"] or j["failedIds"])
 
 
@@ -204,30 +205,7 @@ def get_id_mapping_results_stream(url):
     return decode_results(request, file_format, compressed)
 
 
-job_id = submit_id_mapping(
-    from_db="UniProtKB_AC-ID", to_db="ChEMBL", ids=["P05067", "P12345"]
-)
-if check_id_mapping_results_ready(job_id):
-    link = get_id_mapping_results_link(job_id)
-    results = get_id_mapping_results_search(link)
-    # Equivalently using the stream endpoint which is more demanding
-    # on the API and so is less stable:
-    # results = get_id_mapping_results_stream(link)
-
-
 # get unique values from column entry1 and entry2 combined and name starts with 'cpd'
-def get_unique_proteins(df, prefix='hsa'):
-    '''
-    Get unique values from column entry1 and entry2 combined.
-    '''
-    all_entries = pd.concat([df['entry1'], df['entry2']]).unique()
-    # convert all_entries to string
-
-    proteins = [entry for entry in all_entries if str(entry).startswith(prefix)]
-    # remove prefix
-    proteins = [entry.replace(f'{prefix}:', '') for entry in proteins]
-    return proteins
-
 
 
 if __name__ == '__main__':

@@ -1,23 +1,26 @@
 import io
 from enum import Enum
-
+from unittest.mock import patch
 import pytest
 import pandas as pd
 from pathlib import Path
+
+from kamping.parser.convert import Converter
 from kamping.parser.network import KeggGraph
 from kamping.main import network
 import xml.etree.ElementTree as ET
 from click.testing import CliRunner
+
 
 def parse_kgml_file(file_path, **kwargs):
     interaction = KeggGraph(input_data=file_path, **kwargs)
     return interaction.interaction
 
 
+test_file = 'data/hsa00010_test.xml'
+
+
 class TestGenesInteractionParser:
-
-    test_file = 'data/hsa00010_test.xml'
-
     xml_data = '''
     <root>
         <entry id="1" name="gene1" type="gene"/>
@@ -46,7 +49,7 @@ class TestGenesInteractionParser:
         output_dir = Path('output')
         output_dir.mkdir(parents=True, exist_ok=True)
         runner = CliRunner()
-        runner.invoke(network, ['--type', 'gene-only', 'hsa', self.test_file, '--out_dir', 'output'])
+        runner.invoke(network, ['--type', 'gene-only', 'hsa', test_file, '--out_dir', 'output'])
         output_files = list(output_dir.glob('*.tsv'))
         assert len(output_files) > 0
         for file in output_files:
@@ -59,14 +62,15 @@ class TestGenesInteractionParser:
         ''''
         Test without id_conversion
         '''
-        output_df = parse_kgml_file(self.test_file, type="MPI", unique=False, verbose=False)
+        output_df = parse_kgml_file(test_file, type="MPI", unique=False, verbose=False)
         snapshot.assert_match(output_df)
 
     def test_parse_with_id_conversion(self, snapshot):
         '''
         Test with id_conversion='uniprot'
         '''
-        output_df = parse_kgml_file(self.test_file, type="gene-only", id_conversion='uniprot',
+        id_converter = Converter('hsa', target='uniprot')
+        output_df = parse_kgml_file(test_file, type="gene-only", id_converter=id_converter,
                                     unique=False, verbose=False)
         snapshot.assert_match(output_df)
 
@@ -74,7 +78,8 @@ class TestGenesInteractionParser:
         '''
         Test with id_conversion='uniprot'
         '''
-        output_df = parse_kgml_file(self.test_file, type="gene-only", id_conversion='uniprot',
+        id_converter = Converter('hsa', target='uniprot')
+        output_df = parse_kgml_file(test_file, type="gene-only", id_converter=id_converter,
                                     unique=False, verbose=False)
         snapshot.assert_match(output_df)
 
@@ -82,7 +87,8 @@ class TestGenesInteractionParser:
         '''
         Test with id_conversion='uniprot'
         '''
-        output_df = parse_kgml_file(self.test_file, type='MPI', id_conversion='uniprot',
+        id_converter = Converter('hsa', target='uniprot')
+        output_df = parse_kgml_file(test_file, type='MPI', id_converter=id_converter,
                                     unique=False, verbose=False)
         snapshot.assert_match(output_df)
 
@@ -90,7 +96,8 @@ class TestGenesInteractionParser:
         output_dir = Path('output')
         output_dir.mkdir(parents=True, exist_ok=True)
         runner = CliRunner()
-        runner.invoke(network, ['--type', 'MPI', 'hsa', self.test_file, '--out_dir', 'output', '--id_conversion', 'uniprot'])
+        runner.invoke(network,
+                      ['--type', 'MPI', 'hsa', test_file, '--out_dir', 'output', '--id_conversion', 'uniprot'])
         output_files = list(output_dir.glob('*.tsv'))
         assert len(output_files) > 0
         for file in output_files:
@@ -100,9 +107,9 @@ class TestGenesInteractionParser:
             assert 'entry2' in df.columns
 
     def test_get_edges_with_valid_data(self):
-
-
-        parser = KeggGraph(input_data=self.xml_data, type='gene-only', unique=False, id_conversion=None, names=False, verbose=False)
+        parser = KeggGraph(input_data=self.xml_data, type='gene-only',
+                           unique=False,
+                           verbose=False)
         edges = parser.get_edges()
         assert not edges.empty
         assert 'entry1' in edges.columns
@@ -117,8 +124,8 @@ class TestGenesInteractionParser:
         '''
         xml_data = io.StringIO(xml_data)
         with pytest.raises(FileNotFoundError):
-            interaction = KeggGraph(input_data=xml_data, type='gene-only', unique=False, id_conversion=None, names=False, verbose=False)
-
+            interaction = KeggGraph(input_data=xml_data, type='gene-only', unique=False,
+                                    verbose=False)
 
     def test_get_edges_with_no_relations(self):
         xml_data = '''
@@ -129,11 +136,11 @@ class TestGenesInteractionParser:
         '''
         xml_data = io.StringIO(xml_data)
         with pytest.raises(FileNotFoundError):
-            parser = KeggGraph(input_data=xml_data, type='gene-only', unique=False, id_conversion=None, names=False, verbose=False)
-
+            parser = KeggGraph(input_data=xml_data, type='gene-only', unique=False,
+                               verbose=False)
 
     def test_remove_undefined_entries(self):
-        output_df = parse_kgml_file(self.test_file, type="gene-only", id_conversion='uniprot',
+        output_df = parse_kgml_file(test_file, type="gene-only",
                                     unique=False, verbose=False)
         # check entries with undefined values
         assert output_df[output_df['entry1'].str.contains('undefined')].empty
@@ -156,7 +163,8 @@ class TestGenesInteractionParser:
         </root>
         '''
         xml_data = io.StringIO(xml_data)
-        parser = KeggGraph(input_data=xml_data, type='gene-only', unique=False, id_conversion=None, names=False, verbose=False)
+        parser = KeggGraph(input_data=xml_data, type='gene-only', unique=False,
+                           verbose=False)
         edges = parser.get_edges()
         assert not edges.empty
         assert len(edges) == 2
@@ -183,9 +191,52 @@ class TestGenesInteractionParser:
         </pathway>
         '''
         xml_data = io.StringIO(xml_data)
-        interaction = KeggGraph(input_data=xml_data, type='MPI', auto_relation_fix='remove', unique=False, id_conversion=None, names=False, verbose=False)
+        interaction = KeggGraph(input_data=xml_data, type='MPI', auto_relation_fix='remove', unique=False,
+                                id_converter=None, names=False, verbose=False)
         assert interaction.interaction.empty
         # interaction = Interaction(input_data=xml_data, type='MPI', auto_relation_fix='fix', unique=False, id_conversion=None, names=False, verbose=False)
         # assert len(interaction.data) == 1
 
 
+class TestGetMolEmbedding():
+
+    def test_get_smiles_gene_only(self):
+        parser = KeggGraph(input_data=test_file, type='gene-only')
+        smiles = parser.get_smiles()
+        assert smiles is None
+
+    def test_get_smiles_mpi(self):
+        parser = KeggGraph(input_data=test_file, type='mpi')
+        smiles = parser.get_smiles()
+        assert isinstance(smiles, dict)
+        assert len(smiles) > 0
+
+    def test_get_mol_embedding(self):
+        graph = KeggGraph(input_data=test_file, type='mpi')
+        graph.get_mol_embedding(transformer='morgan')
+        assert isinstance(graph.mol_embedding, dict)
+        assert len(graph.mol_embedding) > 0
+
+
+class TestProteinEmbedding:
+
+    def test_protein_embedding(self):
+        graph = KeggGraph(input_data=test_file, type='gene-only')
+        graph.get_protein_embedding(embedding_file='data/protein_embedding.h5')
+        assert isinstance(graph.protein_embedding, dict)
+        assert len(graph.protein_embedding) > 0
+
+
+class TestGetProteinFeatures:
+    def test_get_protein_features(self):
+        graph = KeggGraph(input_data=test_file, type='gene-only')
+        graph.get_protein_features()
+        assert isinstance(graph.protein_features, dict)
+        assert len(graph.protein_features) == 0
+
+    def test_get_protein_features_valid(self):
+        converter = Converter('hsa', target='uniprot')
+        graph = KeggGraph(input_data=test_file, type='gene-only', id_converter=converter)
+        graph.get_protein_features()
+        assert isinstance(graph.protein_features, dict)
+        assert len(graph.protein_features) > 0
