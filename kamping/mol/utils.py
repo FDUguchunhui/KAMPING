@@ -27,8 +27,10 @@ def get_unique_compound_values(df):
     '''
     Get unique values from column entry1 and entry2 combined.
     '''
-    all_entries = pd.concat([df['entry1'], df['entry2']]).unique()
-    # convert all_entries to string
+    # get all emtries from entry1 if entry1_type is compound
+    # get all entries from entry2 if entry2_type is compound
+    entry1_compound = df[df['entry1_type'] == 'compound']['entry1']
+    entry2_compound = df[df['entry2_type'] == 'compound']['entry2']
+    compounds = pd.concat([entry1_compound, entry2_compound]).unique()
 
-    compound_values = [entry for entry in all_entries if str(entry).startswith('cpd')]
-    return compound_values
+    return compounds

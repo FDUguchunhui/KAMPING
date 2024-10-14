@@ -1,50 +1,84 @@
 entry1	entry2	type	name	value	entry1_type	entry2_type
-hsa:130589	hsa:2645	ECrel	compound	cpd:C00267	gene	gene
-hsa:6794	hsa:100132074	PPrel	activation	-->	gene	gene
-hsa:6794	hsa:2308	PPrel	activation	-->	gene	gene
-hsa:6794	hsa:2309	PPrel	activation	-->	gene	gene
-hsa:6794	hsa:4303	PPrel	activation	-->	gene	gene
-hsa:6794	hsa:100132074	PPrel	phosphorylation	+p	gene	gene
-hsa:6794	hsa:2308	PPrel	phosphorylation	+p	gene	gene
-hsa:6794	hsa:2309	PPrel	phosphorylation	+p	gene	gene
-hsa:6794	hsa:4303	PPrel	phosphorylation	+p	gene	gene
-hsa:23236	hsa:163688	PPrel	compound	cpd:C08412	gene	gene
-hsa:23236	hsa:51806	PPrel	compound	cpd:C08412	gene	gene
-hsa:23236	hsa:801	PPrel	compound	cpd:C08412	gene	gene
-hsa:23236	hsa:805	PPrel	compound	cpd:C08412	gene	gene
-hsa:23236	hsa:808	PPrel	compound	cpd:C08412	gene	gene
-hsa:23236	hsa:810	PPrel	compound	cpd:C08412	gene	gene
-hsa:23236	hsa:91860	PPrel	compound	cpd:C08412	gene	gene
-hsa:5330	hsa:163688	PPrel	compound	cpd:C08412	gene	gene
-hsa:5330	hsa:51806	PPrel	compound	cpd:C08412	gene	gene
-hsa:5330	hsa:801	PPrel	compound	cpd:C08412	gene	gene
-hsa:5330	hsa:805	PPrel	compound	cpd:C08412	gene	gene
-hsa:5330	hsa:808	PPrel	compound	cpd:C08412	gene	gene
-hsa:5330	hsa:810	PPrel	compound	cpd:C08412	gene	gene
-hsa:5330	hsa:91860	PPrel	compound	cpd:C08412	gene	gene
-hsa:5331	hsa:163688	PPrel	compound	cpd:C08412	gene	gene
-hsa:5331	hsa:51806	PPrel	compound	cpd:C08412	gene	gene
-hsa:5331	hsa:801	PPrel	compound	cpd:C08412	gene	gene
-hsa:5331	hsa:805	PPrel	compound	cpd:C08412	gene	gene
-hsa:5331	hsa:808	PPrel	compound	cpd:C08412	gene	gene
-hsa:5331	hsa:810	PPrel	compound	cpd:C08412	gene	gene
-hsa:5331	hsa:91860	PPrel	compound	cpd:C08412	gene	gene
-hsa:5332	hsa:163688	PPrel	compound	cpd:C08412	gene	gene
-hsa:5332	hsa:51806	PPrel	compound	cpd:C08412	gene	gene
-hsa:5332	hsa:801	PPrel	compound	cpd:C08412	gene	gene
-hsa:5332	hsa:805	PPrel	compound	cpd:C08412	gene	gene
-hsa:5332	hsa:808	PPrel	compound	cpd:C08412	gene	gene
-hsa:5332	hsa:810	PPrel	compound	cpd:C08412	gene	gene
-hsa:5332	hsa:91860	PPrel	compound	cpd:C08412	gene	gene
-hsa:100132074	hsa:85417	GErel	expression	-->	gene	gene
-hsa:100132074	hsa:891	GErel	expression	-->	gene	gene
-hsa:100132074	hsa:9133	GErel	expression	-->	gene	gene
-hsa:2308	hsa:85417	GErel	expression	-->	gene	gene
-hsa:2308	hsa:891	GErel	expression	-->	gene	gene
-hsa:2308	hsa:9133	GErel	expression	-->	gene	gene
-hsa:2309	hsa:85417	GErel	expression	-->	gene	gene
-hsa:2309	hsa:891	GErel	expression	-->	gene	gene
-hsa:2309	hsa:9133	GErel	expression	-->	gene	gene
-hsa:4303	hsa:85417	GErel	expression	-->	gene	gene
-hsa:4303	hsa:891	GErel	expression	-->	gene	gene
-hsa:4303	hsa:9133	GErel	expression	-->	gene	gene
+130589	C00267	PCrel	enzyme-enzyme expansion	custom	gene	compound
+C00267	2645	PCrel	enzyme-enzyme expansion	custom	compound	gene
+6794	100132074	PPrel	activation	-->	gene	gene
+6794	2308	PPrel	activation	-->	gene	gene
+6794	2309	PPrel	activation	-->	gene	gene
+6794	4303	PPrel	activation	-->	gene	gene
+6794	100132074	PPrel	phosphorylation	+p	gene	gene
+6794	2308	PPrel	phosphorylation	+p	gene	gene
+6794	2309	PPrel	phosphorylation	+p	gene	gene
+6794	4303	PPrel	phosphorylation	+p	gene	gene
+23236	C08412	PCrel	protein-protein expansion	custom	gene	compound
+C08412	163688	PCrel	protein-protein expansion	custom	compound	gene
+23236	C08412	PCrel	protein-protein expansion	custom	gene	compound
+C08412	51806	PCrel	protein-protein expansion	custom	compound	gene
+23236	C08412	PCrel	protein-protein expansion	custom	gene	compound
+C08412	801	PCrel	protein-protein expansion	custom	compound	gene
+23236	C08412	PCrel	protein-protein expansion	custom	gene	compound
+C08412	805	PCrel	protein-protein expansion	custom	compound	gene
+23236	C08412	PCrel	protein-protein expansion	custom	gene	compound
+C08412	808	PCrel	protein-protein expansion	custom	compound	gene
+23236	C08412	PCrel	protein-protein expansion	custom	gene	compound
+C08412	810	PCrel	protein-protein expansion	custom	compound	gene
+23236	C08412	PCrel	protein-protein expansion	custom	gene	compound
+C08412	91860	PCrel	protein-protein expansion	custom	compound	gene
+5330	C08412	PCrel	protein-protein expansion	custom	gene	compound
+C08412	163688	PCrel	protein-protein expansion	custom	compound	gene
+5330	C08412	PCrel	protein-protein expansion	custom	gene	compound
+C08412	51806	PCrel	protein-protein expansion	custom	compound	gene
+5330	C08412	PCrel	protein-protein expansion	custom	gene	compound
+C08412	801	PCrel	protein-protein expansion	custom	compound	gene
+5330	C08412	PCrel	protein-protein expansion	custom	gene	compound
+C08412	805	PCrel	protein-protein expansion	custom	compound	gene
+5330	C08412	PCrel	protein-protein expansion	custom	gene	compound
+C08412	808	PCrel	protein-protein expansion	custom	compound	gene
+5330	C08412	PCrel	protein-protein expansion	custom	gene	compound
+C08412	810	PCrel	protein-protein expansion	custom	compound	gene
+5330	C08412	PCrel	protein-protein expansion	custom	gene	compound
+C08412	91860	PCrel	protein-protein expansion	custom	compound	gene
+5331	C08412	PCrel	protein-protein expansion	custom	gene	compound
+C08412	163688	PCrel	protein-protein expansion	custom	compound	gene
+5331	C08412	PCrel	protein-protein expansion	custom	gene	compound
+C08412	51806	PCrel	protein-protein expansion	custom	compound	gene
+5331	C08412	PCrel	protein-protein expansion	custom	gene	compound
+C08412	801	PCrel	protein-protein expansion	custom	compound	gene
+5331	C08412	PCrel	protein-protein expansion	custom	gene	compound
+C08412	805	PCrel	protein-protein expansion	custom	compound	gene
+5331	C08412	PCrel	protein-protein expansion	custom	gene	compound
+C08412	808	PCrel	protein-protein expansion	custom	compound	gene
+5331	C08412	PCrel	protein-protein expansion	custom	gene	compound
+C08412	810	PCrel	protein-protein expansion	custom	compound	gene
+5331	C08412	PCrel	protein-protein expansion	custom	gene	compound
+C08412	91860	PCrel	protein-protein expansion	custom	compound	gene
+5332	C08412	PCrel	protein-protein expansion	custom	gene	compound
+C08412	163688	PCrel	protein-protein expansion	custom	compound	gene
+5332	C08412	PCrel	protein-protein expansion	custom	gene	compound
+C08412	51806	PCrel	protein-protein expansion	custom	compound	gene
+5332	C08412	PCrel	protein-protein expansion	custom	gene	compound
+C08412	801	PCrel	protein-protein expansion	custom	compound	gene
+5332	C08412	PCrel	protein-protein expansion	custom	gene	compound
+C08412	805	PCrel	protein-protein expansion	custom	compound	gene
+5332	C08412	PCrel	protein-protein expansion	custom	gene	compound
+C08412	808	PCrel	protein-protein expansion	custom	compound	gene
+5332	C08412	PCrel	protein-protein expansion	custom	gene	compound
+C08412	810	PCrel	protein-protein expansion	custom	compound	gene
+5332	C08412	PCrel	protein-protein expansion	custom	gene	compound
+C08412	91860	PCrel	protein-protein expansion	custom	compound	gene
+100132074	85417	GErel	expression	-->	gene	gene
+100132074	891	GErel	expression	-->	gene	gene
+100132074	9133	GErel	expression	-->	gene	gene
+2308	85417	GErel	expression	-->	gene	gene
+2308	891	GErel	expression	-->	gene	gene
+2308	9133	GErel	expression	-->	gene	gene
+2309	85417	GErel	expression	-->	gene	gene
+2309	891	GErel	expression	-->	gene	gene
+2309	9133	GErel	expression	-->	gene	gene
+4303	85417	GErel	expression	-->	gene	gene
+4303	891	GErel	expression	-->	gene	gene
+4303	9133	GErel	expression	-->	gene	gene
+441925	C04549	PCrel	activation	-->	gene	compound
+8678	C04549	PCrel	activation	-->	gene	compound
+30849	C04549	PCrel	activation	-->	gene	compound
+441925	30849	PPrel	protein-complex	custom	gene	gene
+8678	30849	PPrel	protein-complex	custom	gene	gene

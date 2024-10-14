@@ -5,12 +5,14 @@ import pytest
 import pandas as pd
 from pathlib import Path
 
+import requests
+
 from kamping.parser.convert import Converter
 from kamping.parser.network import KeggGraph
 from kamping.main import network
 import xml.etree.ElementTree as ET
 from click.testing import CliRunner
-
+from unittest.mock import Mock
 
 def parse_kgml_file(file_path, **kwargs):
     interaction = KeggGraph(input_data=file_path, **kwargs)
@@ -39,7 +41,7 @@ class TestGenesInteractionParser:
             parse_kgml_file('data/kgml_hsa/empty.xml', type='gene-only')
 
     def test_genes_parser_single_file(self):
-        output_df = parse_kgml_file(self.test_file, type="gene-only", unique=False, verbose=False)
+        output_df = parse_kgml_file(test_file, type="gene-only", unique=False, verbose=False)
         assert not output_df.empty
         assert 'entry1' in output_df.columns
         assert 'entry2' in output_df.columns
@@ -62,7 +64,7 @@ class TestGenesInteractionParser:
         ''''
         Test without id_conversion
         '''
-        output_df = parse_kgml_file(test_file, type="MPI", unique=False, verbose=False)
+        output_df = parse_kgml_file(test_file, type="mpi", unique=False, verbose=False)
         snapshot.assert_match(output_df)
 
     def test_parse_with_id_conversion(self, snapshot):
@@ -83,21 +85,21 @@ class TestGenesInteractionParser:
                                     unique=False, verbose=False)
         snapshot.assert_match(output_df)
 
-    def test_parse_MPI(self, snapshot):
+    def test_parse_mpi(self, snapshot):
         '''
         Test with id_conversion='uniprot'
         '''
         id_converter = Converter('hsa', target='uniprot')
-        output_df = parse_kgml_file(test_file, type='MPI', id_converter=id_converter,
+        output_df = parse_kgml_file(test_file, type='mpi', id_converter=id_converter,
                                     unique=False, verbose=False)
         snapshot.assert_match(output_df)
 
-    def test_MPI_parser_directory(self):
+    def test_mpi_parser_directory(self):
         output_dir = Path('output')
         output_dir.mkdir(parents=True, exist_ok=True)
         runner = CliRunner()
         runner.invoke(network,
-                      ['--type', 'MPI', 'hsa', test_file, '--out_dir', 'output', '--id_conversion', 'uniprot'])
+                      ['--type', 'mpi', 'hsa', test_file, '--out_dir', 'output', '--id_conversion', 'uniprot'])
         output_files = list(output_dir.glob('*.tsv'))
         assert len(output_files) > 0
         for file in output_files:
@@ -191,10 +193,10 @@ class TestGenesInteractionParser:
         </pathway>
         '''
         xml_data = io.StringIO(xml_data)
-        interaction = KeggGraph(input_data=xml_data, type='MPI', auto_relation_fix='remove', unique=False,
+        interaction = KeggGraph(input_data=xml_data, type='mpi', auto_relation_fix='remove', unique=False,
                                 id_converter=None, names=False, verbose=False)
         assert interaction.interaction.empty
-        # interaction = Interaction(input_data=xml_data, type='MPI', auto_relation_fix='fix', unique=False, id_conversion=None, names=False, verbose=False)
+        # interaction = Interaction(input_data=xml_data, type='mpi', auto_relation_fix='fix', unique=False, id_conversion=None, names=False, verbose=False)
         # assert len(interaction.data) == 1
 
 
@@ -229,14 +231,32 @@ class TestProteinEmbedding:
 
 class TestGetProteinFeatures:
     def test_get_protein_features(self):
-        graph = KeggGraph(input_data=test_file, type='gene-only')
-        graph.get_protein_features()
-        assert isinstance(graph.protein_features, dict)
-        assert len(graph.protein_features) == 0
+        graph = KeggGraph(input_data=test_file, type='gene-only', id_converter=None)
+        # raise value error
+        with pytest.raises(ValueError):
+            graph.get_protein_features()
 
     def test_get_protein_features_valid(self):
         converter = Converter('hsa', target='uniprot')
         graph = KeggGraph(input_data=test_file, type='gene-only', id_converter=converter)
-        graph.get_protein_features()
-        assert isinstance(graph.protein_features, dict)
-        assert len(graph.protein_features) > 0
+        # expect  request.exception.HTTPError
+        with pytest.raises(requests.exceptions.HTTPError, match="500 Server Error"):
+            graph.get_protein_features()
+            assert isinstance(graph.protein_features, dict)
+            assert len(graph.protein_features) > 0
+
+
+    def test_gene_propagation(self):
+        fake_instance = Mock()
+        data = [
+            ['gene1', 'compound1', 'PCrel', 'none', 'none', 'gene', 'compound'],
+            ['compound1', 'compound2', 'PCrel', 'none', 'none', 'compound', 'compound'],
+            ['compound2', 'gene3', 'PCrel', 'compound', 'none', 'compound', 'gene']
+        ]
+        df = pd.DataFrame(data, columns=['entry1', 'entry2', 'type', 'name', 'value', 'entry1_type', 'entry2_type'])
+        fake_instance.interaction = df
+        KeggGraph.propagate_to_gene(fake_instance)
+        expected = pd.DataFrame([['gene1', 'gene3', 'PPrel', 'compound-propagation', 'custom', 'gene', 'gene']],
+                                columns=['entry1', 'entry2', 'type', 'name', 'value', 'entry1_type', 'entry2_type'])
+        # assert pandas dataframe
+        pd.testing.assert_frame_equal(fake_instance.interaction, expected)

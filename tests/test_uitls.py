@@ -3,7 +3,7 @@ import pandas as pd
 import pytest
 import pandas.testing as pdt
 
-from kamping.parser.utils import entry_id_conv_dict
+from kamping.parser.utils import entry_id_conv_dict, get_group_to_id_mapping
 from kamping.utils import read_all_tsv_files
 import xml.etree.ElementTree as ET
 
@@ -96,3 +96,25 @@ class TestEntryIdConvDict:
     # set index name
         expected.index.name = 'id'
         pdt.assert_frame_equal(result, expected)
+
+
+def test_get_group_to_id_mapping():
+    xml = '''
+    <pathway>
+            <entry id="352" name="undefined" type="group">
+        <graphics fgcolor="#000000" bgcolor="#FFFFFF"
+             type="rectangle" x="804" y="1206" width="92" height="51"/>
+        <component id="240"/>
+        <component id="241"/>
+        <component id="242"/>
+        <component id="243"/>
+        <component id="244"/>
+    </entry>
+    </pathway>
+    '''
+    root = ET.fromstring(xml)
+    result = get_group_to_id_mapping(root)
+    expected = {"352": ["240", "241", "242", "243", "244"]}
+    assert result == expected
+
+

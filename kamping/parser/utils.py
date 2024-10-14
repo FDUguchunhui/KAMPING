@@ -168,3 +168,26 @@ def get_unique_proteins(df):
 
     # remove prefix
     return proteins
+
+
+def get_group_to_id_mapping(root):
+    '''
+        <entry id="352" name="undefined" type="group">
+        <graphics fgcolor="#000000" bgcolor="#FFFFFF"
+             type="rectangle" x="804" y="1206" width="92" height="51"/>
+        <component id="240"/>
+        <component id="241"/>
+        <component id="242"/>
+        <component id="243"/>
+        <component id="244"/>
+    </entry>
+    '''
+    groups = root.findall('entry[@type="group"]')
+    # get the group id and the component ids
+    group_to_id = {}
+    for group in groups:
+        group_id = group.get('id')
+        components = [component.get('id') for component in group.findall('component')]
+        group_to_id[group_id] = components
+
+    return group_to_id
