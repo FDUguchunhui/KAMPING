@@ -20,15 +20,16 @@ class ProteinMetabliteParser:
 
 
     def parse_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
+        # expand the relation in the DataFrame
+        # create an empty dataframe
+        new_df = pd.DataFrame()
 
         # if row number greater than 0:
         if (df.shape[0]) == 0:
             # throw an error
-            raise ValueError(f'input dataframe does not contain data to parse!')
+            return new_df
 
-        # expand the relation in the DataFrame
-        # create an empty dataframe
-        new_df = pd.DataFrame()
+
 
         for _, row in df.iterrows():
             # for PPrel type, if the name is compound (intermediated by metabolite), expand the relation

@@ -98,11 +98,31 @@
     </relation>
 
     <!-- Reaction -->
-    <reaction id="42" name="rn:R00710" type="reversible">
-        <substrate id="105" name="cpd:C00084"/>
-        <product id="45" name="cpd:C00033"/>
+    <entry id="69" name="hsa:54995" type="gene" reaction="rn:R04960"
+           link="https://www.kegg.jp/dbget-bin/www_bget?hsa:54995">
+        <graphics name="OXSM, CEM1, FASN2D, KASI, KS" fgcolor="#000000" bgcolor="#BFFFBF"
+                  type="rectangle" x="612" y="339" width="46" height="17"/>
+    </entry>
+    <entry id="176" name="cpd:C05752" type="compound"
+           link="https://www.kegg.jp/dbget-bin/www_bget?C05752">
+        <graphics name="C05752" fgcolor="#000000" bgcolor="#FFFFFF"
+                  type="circle" x="445" y="694" width="8" height="8"/>
+    </entry>
+    <entry id="165" name="cpd:C01209" type="compound"
+           link="https://www.kegg.jp/dbget-bin/www_bget?C01209">
+        <graphics name="C01209" fgcolor="#000000" bgcolor="#FFFFFF"
+                  type="circle" x="275" y="274" width="8" height="8"/>
+    </entry>
+    <entry id="180" name="cpd:C05753" type="compound"
+           link="https://www.kegg.jp/dbget-bin/www_bget?C05753">
+        <graphics name="C05753" fgcolor="#000000" bgcolor="#FFFFFF"
+                  type="circle" x="587" y="376" width="8" height="8"/>
+    </entry>
+    <reaction id="69" name="rn:R04960" type="irreversible">
+    <substrate id="176" name="cpd:C05752"/>
+    <substrate id="165" name="cpd:C01209"/>
+    <product id="180" name="cpd:C05753"/>
     </reaction>
-
 
     <!-- Group -->
     <entry id="352" name="undefined" type="group">

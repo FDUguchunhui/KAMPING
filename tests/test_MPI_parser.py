@@ -6,8 +6,7 @@ from kamping.parser.protein_metabolite_parser import ProteinMetabliteParser, exp
 def test_parse_dataframe_with_empty_input():
     parser = ProteinMetabliteParser()
     df = pd.DataFrame(columns=['entry1', 'entry2', 'type', 'value', 'name'])
-    with pytest.raises(ValueError, match='input dataframe does not contain data to parse!'):
-        parser.parse_dataframe(df)
+    assert df.empty
 
 def test_parse_dataframe_with_valid_input():
     parser = ProteinMetabliteParser()

@@ -13,6 +13,8 @@ from kamping.main import network
 import xml.etree.ElementTree as ET
 from click.testing import CliRunner
 from unittest.mock import Mock
+import networkx as nx
+
 
 def parse_kgml_file(file_path, **kwargs):
     interaction = KeggGraph(input_data=file_path, **kwargs)
@@ -240,23 +242,46 @@ class TestGetProteinFeatures:
         converter = Converter('hsa', target='uniprot')
         graph = KeggGraph(input_data=test_file, type='gene-only', id_converter=converter)
         # expect  request.exception.HTTPError
-        with pytest.raises(requests.exceptions.HTTPError, match="500 Server Error"):
-            graph.get_protein_features()
-            assert isinstance(graph.protein_features, dict)
-            assert len(graph.protein_features) > 0
-
+        # with pytest.raises(requests.exceptions.HTTPError, match="500 Server Error"):
+        graph.get_protein_features()
+        assert isinstance(graph.protein_features, dict)
+        assert len(graph.protein_features) > 0
 
     def test_gene_propagation(self):
         fake_instance = Mock()
         data = [
             ['gene1', 'compound1', 'PCrel', 'none', 'none', 'gene', 'compound'],
             ['compound1', 'compound2', 'PCrel', 'none', 'none', 'compound', 'compound'],
-            ['compound2', 'gene3', 'PCrel', 'compound', 'none', 'compound', 'gene']
+            ['compound2', 'gene3', 'PCrel', 'compound', 'none', 'compound', 'gene'],
         ]
         df = pd.DataFrame(data, columns=['entry1', 'entry2', 'type', 'name', 'value', 'entry1_type', 'entry2_type'])
         fake_instance.interaction = df
-        KeggGraph.propagate_to_gene(fake_instance)
+        result = KeggGraph.propagate_to_gene(fake_instance, df)
         expected = pd.DataFrame([['gene1', 'gene3', 'PPrel', 'compound-propagation', 'custom', 'gene', 'gene']],
                                 columns=['entry1', 'entry2', 'type', 'name', 'value', 'entry1_type', 'entry2_type'])
         # assert pandas dataframe
-        pd.testing.assert_frame_equal(fake_instance.interaction, expected)
+        pd.testing.assert_frame_equal(result, expected)
+
+
+def test_get_reactions():
+    '''
+    Test get_reactions method
+    '''
+    result = KeggGraph(input_data=test_file, type='gene-only').get_reactions()
+    expected = pd.DataFrame([
+        {'entry1': '176', 'entry2': '69', 'type': 'PCrel', 'name': 'reaction', 'value': 'custom',
+         'direction': 'directed', 'entry1_type': 'compound', 'entry2_type': 'gene'},
+        {'entry1': '165', 'entry2': '69', 'type': 'PCrel', 'name': 'reaction', 'value': 'custom',
+         'direction': 'directed', 'entry1_type': 'compound', 'entry2_type': 'gene'},
+        {'entry1': '69', 'entry2': '180', 'type': 'PCrel', 'name': 'reaction', 'value': 'custom',
+         'direction': 'directed', 'entry1_type': 'gene', 'entry2_type': 'compound'},
+        {'entry1': '176', 'entry2': '165', 'type': 'CCrel', 'name': 'reaction', 'value': 'custom',
+         'direction': 'undirected', 'entry1_type': 'compound', 'entry2_type': 'compound'}])
+    # assert pandas dataframe
+    pd.testing.assert_frame_equal(result.reset_index(drop=True), expected)
+
+
+def test_to_nextworkx():
+    result = KeggGraph(input_data=test_file, type='gene-only').to_networkx()
+    # plot the graph
+    assert result.number_of_nodes() == 2
