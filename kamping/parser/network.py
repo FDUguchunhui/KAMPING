@@ -34,14 +34,6 @@ from kamping.mol.utils import get_unique_compound_values, fetch_mol_file_string,
 from kamping.parser import utils
 from kamping.parser import protein_metabolite_parser
 
-# KGML types
-# for relation, only gene, compound, group, map
-# for species-specfic 'enzyme', 'reaction', 'reaction', 'brite', 'other' is not included
-ENTRY_TYPES = [ 'ortholog', 'gene', 'group', 'compound', 'map']
-# ignore  'maplink' for now
-RELATION_TYPES = ['PPrel', 'GErel', 'PCrel', 'ECrel']
-GENE_PROPAGATION_TYPES = ['compound', 'map']
-
 
 class KeggGraph():
     ''''
@@ -50,22 +42,26 @@ class KeggGraph():
 
     def __init__(self,
                  input_data: str,
-                 type: Literal['gene-only', 'mpi', 'original'],
-                 auto_relation_fix: Union[None, Literal['fix', 'remove']] = 'fix',
+                 type: Literal['gene', 'metabolite', 'mpi'],
                  unique: bool = False,
+                 protein_group_as_interaction: bool = True,
+                 multi_substrate_as_interaction: bool = True,
+                 auto_correction: Union[None, Literal['fix', 'remove']] = 'fix',
+                 directed: bool = True,
                  id_converter: Any = None,
-                 names: bool = False,
                  verbose: bool = False):
         '''
         Initialize the GenesInteractionParser object
 
         '''
-        self.auto_relation_fix = auto_relation_fix
+        self.auto_correction = auto_correction
         self.id_converter = id_converter
         self.input_data = input_data
         self.type = type
         self.unique = unique
-        self.names = names
+        self.protein_group_as_interaction = protein_group_as_interaction
+        self.multi_substrate_as_interaction = multi_substrate_as_interaction
+        self.directed = directed
         self.verbose = verbose
 
 
@@ -88,7 +84,7 @@ class KeggGraph():
         # self.interaction = self.interaction[~self.interaction['entry2'].str.startswith('undefined')]
 
         # auto_relation_fix
-        if self.auto_relation_fix is not None:
+        if self.auto_correction is not None:
             self.auto_fix_relation()
 
         # remove prefix from entry1 and entry2
@@ -131,11 +127,11 @@ class KeggGraph():
             # throw error if no edges are found
             raise FileNotFoundError(f'ERROR: File "{self.input_data}" cannot be parsed.\nVisit {pathway_link} for pathway details.\nThere are likely no edges in which to parse...')
 
-        if self.type == 'gene-only':
+        if self.type == 'gene' :
             # Remove edges with "path" entries
             df = df[df['type'] != 'maplink']
-            df = self.propagate_to_gene(df)
-        elif self.type == 'mpi':
+            df = self.propagate(df, type_keep='gene')
+        elif self.type == 'mpi' or self.type == 'metabolite':
             # remove interaction relationship with type "maplink"
             # replace ECrel with reaction step1: remove ECrel
             df = df[~df['type'].isin(['maplink', 'ECrel'])]
@@ -144,14 +140,25 @@ class KeggGraph():
             df = MPI_parser.parse_dataframe(df)
             # replace ECrel with reaction step2: add reaction
             df = pd.concat([df, self.get_reactions()])
-        elif self.type == 'original':
-            pass
+            if self.type == 'metabolite':
+                # propagate the compound to get gene only interaction
+                df = self.propagate(df, type_keep='compound')
         else:
             raise ValueError(f'Invalid type: {self.type}')
 
+        # group expansion
         df = self.group_expansion(df)
+        # direction
+        if self.directed:
+            df = self.process_edge_direction(df)
+        else:
+            # keep unique rows based on entry1, entry2, type, name, value
+            # clean undirected represeted as two directed edges from process_edge_direction
+            df = df.drop_duplicates(subset=['entry1', 'entry2', 'type', 'name', 'value'])
+            df['direction'] = 'undirected'
+        # convert entry id to kegg id
         df = self.convert_entry_id_to_kegg_id(df)
-        df = self.process_edge_direction(df)
+
         return df.reset_index(drop=True)
 
     def convert_entry_id_to_kegg_id(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -172,10 +179,16 @@ class KeggGraph():
         names_dictionary = utils.names_dict(self.root, self.root.get('org'), conversion_dictionary)
         return self.names_dictionary
 
-    def propagate_to_gene(self, df: pd.DataFrame) -> pd.DataFrame:
+    def propagate(self,df: pd.DataFrame,  type_keep: str) -> pd.DataFrame:
         '''
         Propagate the compound to get gene only interaction
         '''
+        type_remove = None
+        if type_keep == 'gene':
+            type_remove = 'compound'
+        elif type_keep == 'compound':
+            type_remove = 'gene'
+
         G = nx.from_pandas_edgelist(df, source='entry1', target='entry2', edge_attr='name', create_using=nx.DiGraph())
         # create a dict with key in entry and value in entry_type
         entry1_type_dict = dict(zip(df['entry1'], df['entry1_type']))        # get all nodes with
@@ -183,27 +196,31 @@ class KeggGraph():
         entry_type_dict = {**entry1_type_dict, **entry2_type_dict}
         # set node attribute
         nx.set_node_attributes(G, entry_type_dict, 'entry_type')
-        # get all nodes with type "compound" or "path"
-        # get all nodes with type "gene"
-        genes = [node for node, data in G.nodes(data=True) if data['entry_type'] == 'gene']
+        # get all nodes with type
+        nodes_of_type = [node for node, data in G.nodes(data=True) if data['entry_type'] == type_keep]
         # use BFS to find all paths from gene to gene through GENE_PROPAGATION_TYPES
         new_edges = []
-        for source in genes:
-            for target in genes:
+        for source in nodes_of_type:
+            for target in nodes_of_type:
                 if source != target:
                     # Find all paths from source to target
                     for path in nx.all_simple_paths(G, source=source, target=target):
                         # Check if all intermediate nodes are compounds
-                        path_compound = [G.nodes[node]['entry_type'] == 'compound' for node in path[1:-1]]
+                        path_propagated_node_check = [G.nodes[node]['entry_type'] == type_remove for node in path[1:-1]]
                         # check if it not empty and all intermediate nodes are compounds
-                        if path_compound and all(path_compound):
-                            new_edges.append((source, target, 'PPrel', 'compound-propagation', 'custom', 'gene', 'gene'))
+                        if path_propagated_node_check and all(path_propagated_node_check):
+                            if type_keep == 'gene':
+                                new_edges.append((source, target, 'PPrel', 'compound-propagation', 'custom', 'directed', 'gene', 'gene'))
+                            elif type_keep == 'compound':
+                                new_edges.append((source, target, 'CCrel', 'gene-propagation', 'custom', 'directed', 'compound', 'compound'))
         # add new edges to the df
-        new_edges_df = pd.DataFrame(new_edges, columns=['entry1', 'entry2', 'type', 'name', 'value', 'entry1_type', 'entry2_type'])
+        new_edges_df = pd.DataFrame(new_edges, columns=['entry1', 'entry2', 'type', 'name', 'value', 'direction', 'entry1_type', 'entry2_type'])
         df = pd.concat([df, new_edges_df], ignore_index=True).reset_index(drop=True)
-        # remove rows with entry1 and entry2 with type "compound"
-        relation_with_compound = (df['entry1_type'] == 'compound') | (df['entry2_type'] == 'compound')
-        df = df[~relation_with_compound].reset_index(drop=True)
+        # reorder columns
+        df = df[['entry1', 'entry2', 'type', 'name', 'value', 'direction', 'entry1_type', 'entry2_type']]
+        # remove rows with entry1 or entry2 of type since they are original edges before propagation
+        relation_with_type_remove = (df['entry1_type'] == type_remove) | (df['entry2_type'] == type_remove)
+        df = df[~relation_with_type_remove].reset_index(drop=True)
         return df
     
 
@@ -211,7 +228,7 @@ class KeggGraph():
         if self.type == 'gene-only':
             # when entry1_type == "compound" and entry2_type == "compound" remove the row
             self.interaction = self.interaction[~((self.interaction['entry1_type'] == 'compound') & (self.interaction['entry2_type'] == 'compound'))]
-        if self.auto_relation_fix == 'fix':
+        if self.auto_correction == 'fix':
             # when entry1_type == "gene" and entry2_type == "gene" and type != "PPrel" or "GErel" then type = "PPrel"
             self.interaction.loc[(self.interaction['entry1_type'] == 'gene') & (self.interaction['entry2_type'] == 'gene') & (self.interaction['type'].isin(['PPrel', 'GErel', 'ECrel'])), 'type'] = 'PPrel'
             # when entry1_type == "gene" and entry2_type == "compound" and type != "PCrel" then type = "PCrel"
@@ -219,7 +236,7 @@ class KeggGraph():
             # when entry1_type == "compound" and entry2_type == "gene" and type != "PCrel" then type = "PCrel"
             self.interaction.loc[(self.interaction['entry1_type'] == 'compound') & (self.interaction['entry2_type'] == 'gene') & (self.interaction['type'] != 'PCrel'), 'type'] = 'PCrel'
 
-        elif self.auto_relation_fix == 'remove':
+        elif self.auto_correction == 'remove':
             # when entry1_type == "gene" and entry2_type == "gene" and type != "PPrel" or "GErel" then type = "PPrel"
             self.interaction = self.interaction[~(self.interaction['entry1_type'] == 'gene') & (self.interaction['entry2_type'] == 'gene') & (~self.interaction['type'].isin(['PPrel', 'GErel', 'ECrel']))]
             # when entry1_type == "gene" and entry2_type == "compound" and type != "PCrel" then type = "PCrel"
@@ -280,14 +297,16 @@ class KeggGraph():
         for group, members in group_id_dict.items():
             for member1, member2 in itertools.combinations(members, 2):
                 clique_edges = pd.concat([clique_edges,
-                                         pd.DataFrame.from_records({'entry1': member1, 'entry2': member2, 'type': 'PPrel', 'name': 'protein-complex', 'value': 'custom',
+                                         pd.DataFrame.from_records({'entry1': member1, 'entry2': member2, 'type': 'PPrel', 'name': 'protein-group', 'value': 'custom',
                                                                     'direction':'undirected', 'entry1_type': 'gene', 'entry2_type': 'gene'}, index=[0])])
         df['entry1'] =   [group_id_dict[entry]  if entry in group_id_dict else entry for entry in df['entry1']]
         df['entry2'] =   [group_id_dict[entry]  if entry in group_id_dict else entry for entry in df['entry2']]
         df = df.explode('entry1').explode('entry2')
-        df = pd.concat([df, clique_edges])
+        # toggle group-clique
+        if self.protein_group_as_interaction:
+            df = pd.concat([df, clique_edges])
         # remove row with entry1_type="group" and entry2_type="group"
-        df = df[~((df['entry1_type'] == 'group') & (df['entry2_type'] == 'group'))]
+        df = df[~((df['entry1_type'] == 'group') | (df['entry2_type'] == 'group'))]
         return df
 
     def process_edge_direction(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -340,14 +359,15 @@ class KeggGraph():
             new_edges.append({'entry1': row['id'], 'entry2': row['product'], 'type': 'PCrel',
                               'name': 'reaction', 'value': 'custom', 'direction':row['direction'],  'entry1_type': 'gene', 'entry2_type': 'compound'})
             # add cliques edges between substrate
-            if len(row['substrate']) > 1:
-                for substrate1, substrate2 in itertools.combinations(row['substrate'], 2):
-                    new_edges.append({'entry1': substrate1, 'entry2': substrate2, 'type': 'CCrel',
-                                      'name': 'reaction', 'value': 'custom', 'direction': 'undirected',  'entry1_type': 'compound', 'entry2_type': 'compound'})
-            if len(row['product']) > 1:
-                for product1, product2 in itertools.combinations(row['product'], 2):
-                    new_edges.append({'entry1': product1, 'entry2': product2, 'type': 'CCrel',
-                                      'name': 'reaction', 'value': 'custom', 'direction': 'undirected',  'entry1_type': 'compound', 'entry2_type': 'compound'})
+            if self.multi_substrate_as_interaction:
+                if len(row['substrate']) > 1:
+                    for substrate1, substrate2 in itertools.combinations(row['substrate'], 2):
+                        new_edges.append({'entry1': substrate1, 'entry2': substrate2, 'type': 'CCrel',
+                                          'name': 'multi-substrate', 'value': 'custom', 'direction': 'undirected',  'entry1_type': 'compound', 'entry2_type': 'compound'})
+                if len(row['product']) > 1:
+                    for product1, product2 in itertools.combinations(row['product'], 2):
+                        new_edges.append({'entry1': product1, 'entry2': product2, 'type': 'CCrel',
+                                          'name': 'multi-product', 'value': 'custom', 'direction': 'undirected',  'entry1_type': 'compound', 'entry2_type': 'compound'})
         new_edges = pd.DataFrame(new_edges, columns=['entry1', 'entry2', 'type', 'name', 'value', 'direction',  'entry1_type', 'entry2_type'])
         # explode entry1 and entry2
         new_edges = new_edges.explode('entry1').explode('entry2')

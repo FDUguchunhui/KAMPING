@@ -30,12 +30,9 @@ C08412	91860	PCrel	protein-protein expansion	custom	compound	gene	directed
 4303	85417	PPrel	expression	-->	gene	gene	directed
 4303	891	PPrel	expression	-->	gene	gene	directed
 4303	9133	PPrel	expression	-->	gene	gene	directed
-441925	C04549	PCrel	activation	-->	group	compound	directed
-8678	C04549	PCrel	activation	-->	group	compound	directed
-30849	C04549	PCrel	activation	-->	group	compound	directed
 C05752	54995	PCrel	reaction	custom	compound	gene	directed
 C01209	54995	PCrel	reaction	custom	compound	gene	directed
 54995	C05753	PCrel	reaction	custom	gene	compound	directed
-C05752	C01209	CCrel	reaction	custom	compound	compound	undirected
-441925	30849	PPrel	protein-complex	custom	gene	gene	undirected
-8678	30849	PPrel	protein-complex	custom	gene	gene	undirected
+C05752	C01209	CCrel	multi-substrate	custom	compound	compound	undirected
+441925	30849	PPrel	protein-group	custom	gene	gene	undirected
+8678	30849	PPrel	protein-group	custom	gene	gene	undirected
