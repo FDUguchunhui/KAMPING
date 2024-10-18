@@ -10,19 +10,15 @@ import logging
 import os
 from typing import Union, Any
 import h5py
-import numpy as np
 import requests.exceptions
-import scikit_mol.fingerprints
-from rdkit.Chem import PandasTools
+from overrides import overrides
 from typing_extensions import Literal
 import typer
 import pandas as pd
 import networkx as nx
 import xml.etree.ElementTree as ET
-
+import torch_geometric as pyg
 from rdkit import RDLogger
-
-from kamping.parser.utils import load_embedding_from_h5, get_unique_proteins
 from kamping.uniprot.uniprot import submit_id_mapping, check_id_mapping_results_ready, get_id_mapping_results_link, \
     get_id_mapping_results_search
 
@@ -30,7 +26,8 @@ from kamping.uniprot.uniprot import submit_id_mapping, check_id_mapping_results_
 RDLogger.DisableLog('rdApp.warning')
 RDLogger.DisableLog('rdApp.error')
 
-from kamping.mol.utils import get_unique_compound_values, fetch_mol_file_string, get_smiles
+from kamping.mol.utils import fetch_mol_file_string, get_smiles
+from kamping.parser.utils import get_unique_compound_values
 from kamping.parser import utils
 from kamping.parser import protein_metabolite_parser
 
@@ -54,6 +51,7 @@ class KeggGraph():
         Initialize the GenesInteractionParser object
 
         '''
+        # todo: add function to filter common compounds
         self.auto_correction = auto_correction
         self.id_converter = id_converter
         self.input_data = input_data
@@ -68,7 +66,6 @@ class KeggGraph():
         if self.verbose:
             typer.echo(typer.style(f"Now parsing: {self.root.get('title')}...", fg=typer.colors.GREEN, bold=False))
         self.root = ET.parse(input_data).getroot()
-        self.graph_title = self.root.get('title')
         self.entry_dictionary = utils.entry_id_conv_dict(self.root, unique=unique)
         self.interaction = self.get_edges()
         self.mol_smiles = None
@@ -90,11 +87,6 @@ class KeggGraph():
         # remove prefix from entry1 and entry2
         self.interaction['entry1'] = self.interaction['entry1'].str.replace(r'^[^:]+:', '', regex=True)
         self.interaction['entry2'] = self.interaction['entry2'].str.replace(r'^[^:]+:', '', regex=True)
-
-        # create node features
-        self.proteins = get_unique_proteins(self.interaction)
-        self.compounds = get_unique_compound_values(self.interaction)
-
 
     def get_edges(self) -> pd.DataFrame:
         """
@@ -160,6 +152,37 @@ class KeggGraph():
         df = self.convert_entry_id_to_kegg_id(df)
 
         return df.reset_index(drop=True)
+
+    @property
+    def proteins(self):
+        # create node features
+        return utils.get_unique_proteins(self.interaction)
+
+    @property
+    def compounds(self):
+        return  get_unique_compound_values(self.interaction)
+
+    @property
+    def num_nodes(self):
+        return len(self.proteins) + len(self.compounds)
+
+    @property
+    def num_edges(self):
+        return len(self.interaction)
+
+    @overrides
+    def __str__(self):
+        # return the title of the graph and the number of nodes and edges
+        return (f'''KEGG Pathway: 
+            [Title]: {self.root.get('title')} \n 
+            [Name]: {self.root.get('name')} \n 
+            [Org]: {self.root.get('org')} \n 
+            [Link]: {self.root.get('link')} \n 
+            [Image]: {self.root.get('image')} \n 
+            [Link]: {self.root.get('link')} \n 
+            Number of Nodes: {self.num_nodes} \n 
+            Number of Edges: {self.num_edges}''')
+
 
     def convert_entry_id_to_kegg_id(self, df: pd.DataFrame) -> pd.DataFrame:
         # convert compound value to kegg id if only relation.type is "compound"
@@ -244,44 +267,6 @@ class KeggGraph():
             # when entry1_type == "compound" and entry2_type == "gene" and type != "PCrel" then type = "PCrel"
             self.interaction = self.interaction[~(self.interaction['entry1_type'] == 'compound') & (self.interaction['entry2_type'] == 'gene') & (self.interaction['type'] != 'PCrel')]
 
-
-    def get_mol_embedding(self, transformer, dim=1024, **kwargs) -> dict[list, np.array]:
-        '''
-        Get the molecular embeddings
-        '''
-        if self.mol_embedding is None:
-            if transformer == 'morgan':
-                transformer = scikit_mol.fingerprints.MorganFingerprintTransformer(nBits=dim, **kwargs)
-            elif transformer == 'rdkit':
-                transformer = scikit_mol.fingerprints.RDKitFingerprintTransformer(fpSize=dim, **kwargs)
-            elif transformer == 'atom-pair':
-                transformer = scikit_mol.fingerprints.AtomPairFingerprintTransformer(nBits=dim, **kwargs)
-            elif transformer == 'topological':
-                transformer = scikit_mol.fingerprints.TopologicalTorsionFingerprintTransformer(nBits=dim, **kwargs)
-            else:
-                raise ValueError('Invalid transformer')
-
-            # get compound smiles from the graph
-            smiles = self.get_smiles()
-            # create a DataFrame from the smiles
-            smiles = pd.DataFrame(smiles.items(), columns=['id', 'smiles'])
-            # suppress warning from RDKit and summarize warning
-            with contextlib.redirect_stderr(None):
-                PandasTools.AddMoleculeColumnToFrame(smiles, smilesCol='smiles')
-
-            # get rows id with NaN in the ROMol column
-            valid_row_id = smiles.loc[~smiles['ROMol'].isna(), 'id'].tolist()
-            unvalid_row_id = smiles.loc[smiles['ROMol'].isna(), 'id'].tolist()
-
-            logging.warning(f'Successfully parse {len(smiles) - len(unvalid_row_id)} rows with valid SMILES from the MOL file!\n'
-                            f'total {len(unvalid_row_id)} Invalid rows with "Unhandled" in the ROMol column:\n'
-                            f' {unvalid_row_id}, removed from the final output!')
-
-            smiles = smiles.dropna(subset=['ROMol'])
-            # get the molecular vector
-            mol_embeddings = transformer.transform(smiles['ROMol'])
-            self.mol_embedding = dict(zip(valid_row_id, mol_embeddings))
-            return self.mol_embedding
 
 
     def group_expansion(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -374,16 +359,6 @@ class KeggGraph():
         # convert entry1 and entry2 to kegg id
         return new_edges
 
-    def get_smiles(self) -> dict:
-        if self.mol_smiles is None:
-            smiles = []
-            compounds = get_unique_compound_values(self.interaction)
-            for compound in compounds:
-                mol_file_string = fetch_mol_file_string(compound)
-                smiles.append(get_smiles(mol_file_string))
-                self.mol_smiles = dict(zip(compounds, smiles))
-        return self.mol_smiles
-
     def save_mol_embedding(self, file_path):
         '''
         Save the molecular embeddings to a file
@@ -397,16 +372,10 @@ class KeggGraph():
             for key, value in self.embeddings.items():
                 h5file.create_dataset(key, data=value)
 
-    def get_protein_embedding(self, embedding_file):
-        '''
-        Get the protein embeddings
-        '''
-        if self.protein_embedding is None:
-             self.protein_embedding = load_embedding_from_h5(embedding_file)
-        return self.protein_embedding
 
 
-    def get_protein_features(self):
+
+    def get_protein_features(self) -> dict[str, str]:
         '''
         Get the protein features
         '''
@@ -443,20 +412,22 @@ class KeggGraph():
         self.protein_features = dict(zip(queries, sequences))
 
 
-    def to_networkx(self):
+    def to_networkx(self) -> nx.DiGraph:
         '''
         Convert the graph to networkx
         '''
         G = nx.from_pandas_edgelist(self.expand_undirected_edges(),
-                                    source='entry1', target='entry2', edge_attr='name', create_using=nx.DiGraph())
+                                    source='entry1', target='entry2', edge_attr=['name', 'type', 'value', 'direction', 'entry1_type', 'entry2_type',], create_using=nx.DiGraph())
+
         # set node attribute
         # create dict with key in self.proteins and value as "gene"
-        self.proteins = {protein: 'gene' for protein in self.proteins}
+
         # create dict with key in self.molecules and value as "compound"
-        self.compounds = {molecule: 'compound' for molecule in self.compounds}
         # combine the two dictionaries
-        node_type = {**self.proteins, **self.compounds}
-        nx.set_node_attributes(G, node_type, name='type')
+        node_attributes = {**{protein: 'gene' for protein in self.proteins},
+                           **{molecule: 'compound' for molecule in self.compounds}}
+
+        nx.set_node_attributes(G, node_attributes, name='type')
         return G
 
 
@@ -468,11 +439,27 @@ class KeggGraph():
         return pd.concat([self.interaction, self.interaction[self.interaction['direction'] == 'undirected'].rename(columns={'entry1': 'entry2', 'entry2': 'entry1'})])
 
 
-    def to_pyg_data(self):
+    def to_homogenous_pyg_data(self):
         '''
         Convert the graph to PyG data
         '''
-        pass
+        if self.type == 'gene':
+            # convert the graph to networkx
+            G = self.to_networkx()
+            # add embedding to the node attributes
+            nx.set_node_attributes(G, self.protein_embedding, name='embedding')
+            # convert the graph to PyG data
+            data =  pyg.utils.from_networkx(G, node_attrs=['embedding'])
+        elif self.type == 'metabolite':
+            # convert the graph to networkx
+            G = self.to_networkx()
+            # add embedding to the node attributes
+            nx.set_node_attributes(G, self.mol_embedding, name='embedding')
+            # convert the graph to PyG data
+            data =  pyg.utils.from_networkx(G, node_attrs=['embedding'])
+
+        return data
+
 
 
 

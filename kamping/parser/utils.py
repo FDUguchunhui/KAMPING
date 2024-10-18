@@ -1,10 +1,19 @@
+import contextlib
+import logging
 import re
 from collections import defaultdict
 import urllib.request as request
 
 import h5py
+import networkx as nx
 import numpy as np
 import pandas as pd
+import scikit_mol.fingerprints
+import rdkit.Chem as Chem
+from rdkit.Chem import PandasTools
+import torch_geometric.utils, torch_geometric.data
+from kamping.mol.utils import fetch_mol_file_string
+
 
 def entry_id_conv_dict(root, unique=False) -> pd.DataFrame:
     # This dictionary is the unique version
@@ -191,3 +200,94 @@ def get_group_to_id_mapping(root):
         group_to_id[group_id] = components
 
     return group_to_id
+
+
+def get_protein_embedding(embedding_file):
+    '''
+    Get the protein embeddings
+    '''
+    return load_embedding_from_h5(embedding_file)
+
+
+def get_smiles(interaction:pd.DataFrame) -> dict:
+    smiles = []
+    compounds = get_unique_compound_values(interaction)
+    for compound in compounds:
+        # this is inefficient no need to convert back and forth
+        mol_file_string = fetch_mol_file_string(compound)
+        smiles.append( Chem.MolToSmiles(Chem.MolFromMolBlock(mol_file_string)))
+    return dict(zip(compounds, smiles))
+
+
+def get_mol_embedding(graph, transformer, dim=1024, **kwargs) -> dict[list, np.array]:
+    '''
+    Get the molecular embeddings
+    '''
+    if transformer == 'morgan':
+        transformer = scikit_mol.fingerprints.MorganFingerprintTransformer(nBits=dim, **kwargs)
+    elif transformer == 'rdkit':
+        transformer = scikit_mol.fingerprints.RDKitFingerprintTransformer(fpSize=dim, **kwargs)
+    elif transformer == 'atom-pair':
+        transformer = scikit_mol.fingerprints.AtomPairFingerprintTransformer(nBits=dim, **kwargs)
+    elif transformer == 'topological':
+        transformer = scikit_mol.fingerprints.TopologicalTorsionFingerprintTransformer(nBits=dim, **kwargs)
+    else:
+        raise ValueError('Invalid transformer')
+
+    # get compound smiles from the graph
+    smiles = get_smiles(graph.interaction)
+    # create a DataFrame from the smiles
+    smiles = pd.DataFrame(smiles.items(), columns=['id', 'smiles'])
+    # suppress warning from RDKit and summarize warning
+    with contextlib.redirect_stderr(None):
+        PandasTools.AddMoleculeColumnToFrame(smiles, smilesCol='smiles')
+
+    # get rows id with NaN in the ROMol column
+    valid_row_id = smiles.loc[~smiles['ROMol'].isna(), 'id'].tolist()
+    unvalid_row_id = smiles.loc[smiles['ROMol'].isna(), 'id'].tolist()
+
+    logging.warning(f'Successfully parse {len(smiles) - len(unvalid_row_id)} rows with valid SMILES from the MOL file!\n'
+                    f'total {len(unvalid_row_id)} Invalid rows with "Unhandled" in the ROMol column:\n'
+                    f' {unvalid_row_id}, removed from the final output!')
+
+    smiles = smiles.dropna(subset=['ROMol'])
+    # get the molecular vector
+    mol_embeddings = transformer.transform(smiles['ROMol'])
+    mol_embeddings = dict(zip(valid_row_id, mol_embeddings))
+    return mol_embeddings
+
+
+def convert_to_pyg_data(graph, mol_embedding: dict, protein_embedding: dict) -> torch_geometric.data.Data:
+    '''
+    Convert the graph to PyG data
+    '''
+    data = None
+
+    if graph.type == 'gene':
+        G = graph.to_networkx()
+        nx.set_node_attributes(G, protein_embedding, 'protein_embedding')
+        # remove node without protein embedding
+        G.remove_nodes_from([node for node in G if 'protein_embedding' not in G.nodes[node]])
+        # save name as node attribute
+        nx.set_node_attributes(G, dict(graph.entry['name']), 'name')
+        data = torch_geometric.utils.from_networkx(G, group_node_attrs=['protein_embedding'])
+    elif graph.type == 'metabolite':
+        G = graph.to_networkx()
+        nx.set_node_attributes(G, mol_embedding, 'mol_embedding')
+        G.remove_nodes_from([node for node in G if 'mol_embedding' not in G.nodes[node]])
+        data = torch_geometric.utils.from_networkx(G, group_node_attrs=['mol_embedding'])
+
+    return data
+
+
+def get_unique_compound_values(df) -> list:
+    '''
+    Get unique values from column entry1 and entry2 combined.
+    '''
+    # get all emtries from entry1 if entry1_type is compound
+    # get all entries from entry2 if entry2_type is compound
+    entry1_compound = df[df['entry1_type'] == 'compound']['entry1']
+    entry2_compound = df[df['entry2_type'] == 'compound']['entry2']
+    compounds = pd.concat([entry1_compound, entry2_compound]).unique().tolist()
+
+    return compounds

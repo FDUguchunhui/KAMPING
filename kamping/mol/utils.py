@@ -1,4 +1,3 @@
-import pandas as pd
 import requests
 from rdkit import Chem
 
@@ -23,14 +22,3 @@ def get_smiles(mol_file_string):
 # read all file in the directory as one dataframe
 
 # get unique values from column entry1 and entry2 combined and name starts with 'cpd'
-def get_unique_compound_values(df):
-    '''
-    Get unique values from column entry1 and entry2 combined.
-    '''
-    # get all emtries from entry1 if entry1_type is compound
-    # get all entries from entry2 if entry2_type is compound
-    entry1_compound = df[df['entry1_type'] == 'compound']['entry1']
-    entry2_compound = df[df['entry2_type'] == 'compound']['entry2']
-    compounds = pd.concat([entry1_compound, entry2_compound]).unique()
-
-    return compounds

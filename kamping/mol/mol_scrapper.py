@@ -4,7 +4,8 @@ from pathlib import Path
 import pandas as pd
 import typer
 
-from kamping.mol.utils import get_unique_compound_values, fetch_mol_file_string, get_smiles
+from kamping.mol.utils import fetch_mol_file_string, get_smiles
+from kamping.parser.utils import get_unique_compound_values
 from kamping.utils import read_all_tsv_files
 
 
