@@ -1,38 +1,52 @@
-entry1	entry2	type	name	value	entry1_type	entry2_type	direction
-6794	100132074	PPrel	activation	-->	gene	gene	directed
-6794	2308	PPrel	activation	-->	gene	gene	directed
-6794	2309	PPrel	activation	-->	gene	gene	directed
-6794	4303	PPrel	activation	-->	gene	gene	directed
-6794	100132074	PPrel	phosphorylation	+p	gene	gene	directed
-6794	2308	PPrel	phosphorylation	+p	gene	gene	directed
-6794	2309	PPrel	phosphorylation	+p	gene	gene	directed
-6794	4303	PPrel	phosphorylation	+p	gene	gene	directed
-23236	C08412	PCrel	protein-protein expansion	custom	gene	compound	directed
-5330	C08412	PCrel	protein-protein expansion	custom	gene	compound	directed
-5331	C08412	PCrel	protein-protein expansion	custom	gene	compound	directed
-5332	C08412	PCrel	protein-protein expansion	custom	gene	compound	directed
-C08412	163688	PCrel	protein-protein expansion	custom	compound	gene	directed
-C08412	51806	PCrel	protein-protein expansion	custom	compound	gene	directed
-C08412	801	PCrel	protein-protein expansion	custom	compound	gene	directed
-C08412	805	PCrel	protein-protein expansion	custom	compound	gene	directed
-C08412	808	PCrel	protein-protein expansion	custom	compound	gene	directed
-C08412	810	PCrel	protein-protein expansion	custom	compound	gene	directed
-C08412	91860	PCrel	protein-protein expansion	custom	compound	gene	directed
-100132074	85417	PPrel	expression	-->	gene	gene	directed
-100132074	891	PPrel	expression	-->	gene	gene	directed
-100132074	9133	PPrel	expression	-->	gene	gene	directed
-2308	85417	PPrel	expression	-->	gene	gene	directed
-2308	891	PPrel	expression	-->	gene	gene	directed
-2308	9133	PPrel	expression	-->	gene	gene	directed
-2309	85417	PPrel	expression	-->	gene	gene	directed
-2309	891	PPrel	expression	-->	gene	gene	directed
-2309	9133	PPrel	expression	-->	gene	gene	directed
-4303	85417	PPrel	expression	-->	gene	gene	directed
-4303	891	PPrel	expression	-->	gene	gene	directed
-4303	9133	PPrel	expression	-->	gene	gene	directed
-C05752	54995	PCrel	reaction	custom	compound	gene	directed
-C01209	54995	PCrel	reaction	custom	compound	gene	directed
-54995	C05753	PCrel	reaction	custom	gene	compound	directed
-C05752	C01209	CCrel	multi-substrate	custom	compound	compound	undirected
-441925	30849	PPrel	protein-group	custom	gene	gene	undirected
-8678	30849	PPrel	protein-group	custom	gene	gene	undirected
+entry1	entry2	type	subtype_name	subtype_value	entry1_type	entry2_type
+C01209	C05752	CCrel	multi-substrate	rn:R04960	compound	compound
+C01209	54995	PCrel	reaction	rn:R04960	compound	gene
+C05752	C01209	CCrel	multi-substrate	rn:R04960	compound	compound
+C05752	54995	PCrel	reaction	rn:R04960	compound	gene
+C08412	163688	PCrel	protein-protein expansion	custom	compound	gene
+C08412	163688	PCrel	protein-protein expansion	custom	compound	gene
+C08412	51806	PCrel	protein-protein expansion	custom	compound	gene
+C08412	51806	PCrel	protein-protein expansion	custom	compound	gene
+C08412	801	PCrel	protein-protein expansion	custom	compound	gene
+C08412	801	PCrel	protein-protein expansion	custom	compound	gene
+C08412	805	PCrel	protein-protein expansion	custom	compound	gene
+C08412	805	PCrel	protein-protein expansion	custom	compound	gene
+C08412	808	PCrel	protein-protein expansion	custom	compound	gene
+C08412	808	PCrel	protein-protein expansion	custom	compound	gene
+C08412	810	PCrel	protein-protein expansion	custom	compound	gene
+C08412	810	PCrel	protein-protein expansion	custom	compound	gene
+C08412	91860	PCrel	protein-protein expansion	custom	compound	gene
+C08412	91860	PCrel	protein-protein expansion	custom	compound	gene
+100132074	85417	PPrel	expression	-->	gene	gene
+100132074	891	PPrel	expression	-->	gene	gene
+100132074	9133	PPrel	expression	-->	gene	gene
+2308	85417	PPrel	expression	-->	gene	gene
+2308	891	PPrel	expression	-->	gene	gene
+2308	9133	PPrel	expression	-->	gene	gene
+2309	85417	PPrel	expression	-->	gene	gene
+2309	891	PPrel	expression	-->	gene	gene
+2309	9133	PPrel	expression	-->	gene	gene
+23236	C08412	PCrel	protein-protein expansion	custom	gene	compound
+23236	C08412	PCrel	protein-protein expansion	custom	gene	compound
+30849	441925	PPrel	protein-group	custom	gene	gene
+30849	8678	PPrel	protein-group	custom	gene	gene
+4303	85417	PPrel	expression	-->	gene	gene
+4303	891	PPrel	expression	-->	gene	gene
+4303	9133	PPrel	expression	-->	gene	gene
+441925	30849	PPrel	protein-group	custom	gene	gene
+5330	C08412	PCrel	protein-protein expansion	custom	gene	compound
+5330	C08412	PCrel	protein-protein expansion	custom	gene	compound
+5331	C08412	PCrel	protein-protein expansion	custom	gene	compound
+5331	C08412	PCrel	protein-protein expansion	custom	gene	compound
+5332	C08412	PCrel	protein-protein expansion	custom	gene	compound
+5332	C08412	PCrel	protein-protein expansion	custom	gene	compound
+54995	C05753	PCrel	reaction	rn:R04960	gene	compound
+6794	100132074	PPrel	activation	-->	gene	gene
+6794	100132074	PPrel	phosphorylation	+p	gene	gene
+6794	2308	PPrel	activation	-->	gene	gene
+6794	2308	PPrel	phosphorylation	+p	gene	gene
+6794	2309	PPrel	activation	-->	gene	gene
+6794	2309	PPrel	phosphorylation	+p	gene	gene
+6794	4303	PPrel	activation	-->	gene	gene
+6794	4303	PPrel	phosphorylation	+p	gene	gene
+8678	30849	PPrel	protein-group	custom	gene	gene

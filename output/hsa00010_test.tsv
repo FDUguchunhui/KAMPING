@@ -1,0 +1,136 @@
+entry1	entry2	type	name	value
+up:Q96C23	cpd:C00267	PCrel	enzyme-enzyme expansion	custom
+up:A0A384MDW6	cpd:C00267	PCrel	enzyme-enzyme expansion	custom
+up:P35557	cpd:C00267	PCrel	enzyme-enzyme expansion	custom
+up:Q53Y25	cpd:C00267	PCrel	enzyme-enzyme expansion	custom
+up:Q15831	up:A0A1X9RU27	PPrel	activation	-->
+up:A0A0S2Z4D1	up:A0A1X9RU27	PPrel	activation	-->
+up:Q15831	up:Q12778	PPrel	activation	-->
+up:A0A0S2Z4D1	up:Q12778	PPrel	activation	-->
+up:Q15831	up:O43524	PPrel	activation	-->
+up:A0A0S2Z4D1	up:O43524	PPrel	activation	-->
+up:Q15831	up:P98177	PPrel	activation	-->
+up:A0A0S2Z4D1	up:P98177	PPrel	activation	-->
+up:Q15831	up:A0A1X9RU27	PPrel	phosphorylation	+p
+up:A0A0S2Z4D1	up:A0A1X9RU27	PPrel	phosphorylation	+p
+up:Q15831	up:Q12778	PPrel	phosphorylation	+p
+up:A0A0S2Z4D1	up:Q12778	PPrel	phosphorylation	+p
+up:Q15831	up:O43524	PPrel	phosphorylation	+p
+up:A0A0S2Z4D1	up:O43524	PPrel	phosphorylation	+p
+up:Q15831	up:P98177	PPrel	phosphorylation	+p
+up:A0A0S2Z4D1	up:P98177	PPrel	phosphorylation	+p
+up:Q9NQ66	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q8TD86	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q9NQ66	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q9NZT1	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q53H37	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q9NQ66	cpd:C08412	PCrel	protein-protein expansion	custom
+up:P0DP23	cpd:C08412	PCrel	protein-protein expansion	custom
+up:P0DP24	cpd:C08412	PCrel	protein-protein expansion	custom
+up:P0DP25	cpd:C08412	PCrel	protein-protein expansion	custom
+up:B4DJ51	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q9NQ66	cpd:C08412	PCrel	protein-protein expansion	custom
+up:P0DP23	cpd:C08412	PCrel	protein-protein expansion	custom
+up:P0DP24	cpd:C08412	PCrel	protein-protein expansion	custom
+up:P0DP25	cpd:C08412	PCrel	protein-protein expansion	custom
+up:B4DJ51	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q9NQ66	cpd:C08412	PCrel	protein-protein expansion	custom
+up:P0DP23	cpd:C08412	PCrel	protein-protein expansion	custom
+up:P0DP24	cpd:C08412	PCrel	protein-protein expansion	custom
+up:P0DP25	cpd:C08412	PCrel	protein-protein expansion	custom
+up:B4DJ51	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q9NQ66	cpd:C08412	PCrel	protein-protein expansion	custom
+up:P27482	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q9NQ66	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q96GE6	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q00722	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q59F77	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q8TD86	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q00722	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q59F77	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q9NZT1	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q53H37	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q00722	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q59F77	cpd:C08412	PCrel	protein-protein expansion	custom
+up:P0DP23	cpd:C08412	PCrel	protein-protein expansion	custom
+up:P0DP24	cpd:C08412	PCrel	protein-protein expansion	custom
+up:P0DP25	cpd:C08412	PCrel	protein-protein expansion	custom
+up:B4DJ51	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q00722	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q59F77	cpd:C08412	PCrel	protein-protein expansion	custom
+up:P0DP23	cpd:C08412	PCrel	protein-protein expansion	custom
+up:P0DP24	cpd:C08412	PCrel	protein-protein expansion	custom
+up:P0DP25	cpd:C08412	PCrel	protein-protein expansion	custom
+up:B4DJ51	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q00722	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q59F77	cpd:C08412	PCrel	protein-protein expansion	custom
+up:P0DP23	cpd:C08412	PCrel	protein-protein expansion	custom
+up:P0DP24	cpd:C08412	PCrel	protein-protein expansion	custom
+up:P0DP25	cpd:C08412	PCrel	protein-protein expansion	custom
+up:B4DJ51	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q00722	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q59F77	cpd:C08412	PCrel	protein-protein expansion	custom
+up:P27482	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q00722	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q59F77	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q96GE6	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q01970	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q8TD86	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q01970	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q9NZT1	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q53H37	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q01970	cpd:C08412	PCrel	protein-protein expansion	custom
+up:P0DP23	cpd:C08412	PCrel	protein-protein expansion	custom
+up:P0DP24	cpd:C08412	PCrel	protein-protein expansion	custom
+up:P0DP25	cpd:C08412	PCrel	protein-protein expansion	custom
+up:B4DJ51	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q01970	cpd:C08412	PCrel	protein-protein expansion	custom
+up:P0DP23	cpd:C08412	PCrel	protein-protein expansion	custom
+up:P0DP24	cpd:C08412	PCrel	protein-protein expansion	custom
+up:P0DP25	cpd:C08412	PCrel	protein-protein expansion	custom
+up:B4DJ51	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q01970	cpd:C08412	PCrel	protein-protein expansion	custom
+up:P0DP23	cpd:C08412	PCrel	protein-protein expansion	custom
+up:P0DP24	cpd:C08412	PCrel	protein-protein expansion	custom
+up:P0DP25	cpd:C08412	PCrel	protein-protein expansion	custom
+up:B4DJ51	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q01970	cpd:C08412	PCrel	protein-protein expansion	custom
+up:P27482	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q01970	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q96GE6	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q15147	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q8TD86	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q15147	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q9NZT1	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q53H37	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q15147	cpd:C08412	PCrel	protein-protein expansion	custom
+up:P0DP23	cpd:C08412	PCrel	protein-protein expansion	custom
+up:P0DP24	cpd:C08412	PCrel	protein-protein expansion	custom
+up:P0DP25	cpd:C08412	PCrel	protein-protein expansion	custom
+up:B4DJ51	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q15147	cpd:C08412	PCrel	protein-protein expansion	custom
+up:P0DP23	cpd:C08412	PCrel	protein-protein expansion	custom
+up:P0DP24	cpd:C08412	PCrel	protein-protein expansion	custom
+up:P0DP25	cpd:C08412	PCrel	protein-protein expansion	custom
+up:B4DJ51	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q15147	cpd:C08412	PCrel	protein-protein expansion	custom
+up:P0DP23	cpd:C08412	PCrel	protein-protein expansion	custom
+up:P0DP24	cpd:C08412	PCrel	protein-protein expansion	custom
+up:P0DP25	cpd:C08412	PCrel	protein-protein expansion	custom
+up:B4DJ51	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q15147	cpd:C08412	PCrel	protein-protein expansion	custom
+up:P27482	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q15147	cpd:C08412	PCrel	protein-protein expansion	custom
+up:Q96GE6	cpd:C08412	PCrel	protein-protein expansion	custom
+up:A0A1X9RU27	up:Q8WWL7	GErel	expression	-->
+up:A0A1X9RU27	up:P14635	GErel	expression	-->
+up:A0A1X9RU27	up:O95067	GErel	expression	-->
+up:Q12778	up:Q8WWL7	GErel	expression	-->
+up:Q12778	up:P14635	GErel	expression	-->
+up:Q12778	up:O95067	GErel	expression	-->
+up:O43524	up:Q8WWL7	GErel	expression	-->
+up:O43524	up:P14635	GErel	expression	-->
+up:O43524	up:O95067	GErel	expression	-->
+up:P98177	up:Q8WWL7	GErel	expression	-->
+up:P98177	up:P14635	GErel	expression	-->
+up:P98177	up:O95067	GErel	expression	-->
