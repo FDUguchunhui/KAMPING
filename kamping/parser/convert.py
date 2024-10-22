@@ -9,14 +9,12 @@ import json
 import pathlib
 import re
 from pathlib import Path
+from urllib import request as request
 
 import pandas as pd
 import typer
 from pandas import DataFrame
 from typing import Literal, overload
-from kamping.parser.utils import get_conversion_dictionary
-
-
 
 pd.options.mode.chained_assignment = None
 app = typer.Typer()
@@ -34,7 +32,7 @@ class Converter:
         self.unique = unique
         self.target = target
         self.unmatched = unmatched
-        self.conversion = get_conversion_dictionary(self.species, target=target)
+        self.conversion_dict = self.get_conversion_dictionary()
 
     def _process_dataframe(self, df):
         if self.unique:
@@ -50,8 +48,8 @@ class Converter:
 
         # Map to convert KEGG IDs to target IDs. Note lists are returned
         # for some conversions.
-        df['entry1_conv'] = df['entry1'].map(self.conversion)
-        df['entry2_conv'] = df['entry2'].map(self.conversion)
+        df['entry1_conv'] = df['entry1'].map(self.conversion_dict)
+        df['entry2_conv'] = df['entry2'].map(self.conversion_dict)
 
         # umatched machanism
         if self.unmatched == 'drop':
@@ -103,3 +101,36 @@ class Converter:
         # print work done
         typer.echo(typer.style(f'Conversion of {file.name} complete!', fg=typer.colors.GREEN, bold=True))
 
+    def convert(self, graph):
+        '''
+        Converts a graph of KEGG IDs to UniProt or NCBI IDs
+        '''
+        graph.edges = self.convert_dataframe(graph.edges)
+        graph.protein_id_type = self.target
+
+
+    def get_conversion_dictionary(self):
+        '''
+        Convert KEGG gene IDs to either NCBI gene IDs or UniProt IDs.
+        '''
+        if self.target == 'uniprot':
+            url = 'http://rest.kegg.jp/conv/%s/uniprot'
+        elif self.target == 'ncbi':
+            url = 'http://rest.kegg.jp/conv/%s/ncbi-geneid'
+        response = request.urlopen(url % self.species).read().decode('utf-8')
+        response = response.rstrip().rsplit('\n')
+        kegg = []
+        target = []
+
+        for resp in response:
+            target.append(resp.rsplit()[0])
+            kegg.append(resp.rsplit()[1])
+        # remove prefix string before ":"
+        target = [re.sub(r'^[^:]+:', '', s) for s in target]
+        d = {}
+        for key, value in zip(kegg, target):
+            if key not in d:
+                d[key] = [value]
+            else:
+                d[key].append(value)
+        return d

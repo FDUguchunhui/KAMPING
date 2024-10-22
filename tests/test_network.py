@@ -21,7 +21,7 @@ def parse_kgml_file(file_path, **kwargs):
     return interaction.interaction
 
 
-test_file = 'data/hsa00010_test.xml'
+test_file = 'data/hsa_test.xml'
 
 
 class TestGenesInteractionParser:

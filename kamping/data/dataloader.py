@@ -8,7 +8,7 @@ from torch_geometric.transforms import RandomLinkSplit, ToUndirected
 
 import kamping
 import kamping.utils
-from kamping.dataset.utils import load_node_h5
+from kamping.data.utils import load_node_h5
 
 
 def combined_tsv(input_dir: str):

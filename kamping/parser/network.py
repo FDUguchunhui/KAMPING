@@ -45,7 +45,6 @@ class KeggGraph():
                  multi_substrate_as_interaction: bool = True,
                  auto_correction: Union[None, Literal['fix', 'remove']] = 'fix',
                  directed: bool = True,
-                 id_converter: Any = None,
                  verbose: bool = False):
         '''
         Initialize the GenesInteractionParser object
@@ -53,7 +52,6 @@ class KeggGraph():
         '''
         # todo: add function to filter common compounds
         self.auto_correction = auto_correction
-        self.id_converter = id_converter
         self.input_data = input_data
         self.type = type
         self.unique = unique
@@ -61,20 +59,14 @@ class KeggGraph():
         self.multi_substrate_as_interaction = multi_substrate_as_interaction
         self.directed = directed
         self.verbose = verbose
-
+        self.protein_id_type = 'kegg'
+        self.compound_id_type = 'kegg'
 
         if self.verbose:
             typer.echo(typer.style(f"Now parsing: {self.root.get('title')}...", fg=typer.colors.GREEN, bold=False))
         self.root = ET.parse(input_data).getroot()
         self.entry_dictionary = utils.entry_id_conv_dict(self.root, unique=unique)
         self.edges = self.get_edges()
-        self.mol_smiles = None
-        self.mol_embedding = None
-        self.protein_embedding = None
-
-        if self.id_converter is not None:
-            # convert the edges to the desired id type
-            self.edges = self.id_converter.convert_dataframe(self.edges)
 
         # remove row with undefined entries, this maynot be necessary after group-expansion
         # self.edges = self.edges[~self.edges['entry1'].str.startswith('undefined')]
@@ -84,9 +76,9 @@ class KeggGraph():
         if self.auto_correction is not None:
             self.auto_fix_relation()
 
-        # remove prefix from entry1 and entry2
-        self.edges['entry1'] = self.edges['entry1'].str.replace(r'^[^:]+:', '', regex=True)
-        self.edges['entry2'] = self.edges['entry2'].str.replace(r'^[^:]+:', '', regex=True)
+        # # remove prefix from entry1 and entry2
+        # self.edges['entry1'] = self.edges['entry1'].str.replace(r'^[^:]+:', '', regex=True)
+        # self.edges['entry2'] = self.edges['entry2'].str.replace(r'^[^:]+:', '', regex=True)
 
     def get_edges(self) -> pd.DataFrame:
         """
@@ -189,6 +181,11 @@ class KeggGraph():
             [Link]: {self.root.get('link')} \n 
             [Image]: {self.root.get('image')} \n 
             [Link]: {self.root.get('link')} \n 
+            Graph type: {self.type} \n
+            Number of Proteins: {len(self.proteins)} \n
+            Number of Compounds: {len(self.compounds)} \n
+            Protein ID type : {self.protein_id_type} \n
+            Compound ID type : {self.compound_id_type} \n
             Number of Nodes: {self.num_nodes} \n 
             Number of Edges: {self.num_edges}''')
 
@@ -395,51 +392,49 @@ class KeggGraph():
                 h5file.create_dataset(key, data=value)
 
 
-
-
-    def get_protein_features(self) -> dict[str, str]:
-        '''
-        Get the protein features
-        '''
-        if self.id_converter is None or self.id_converter.target != 'uniprot':
-            raise ValueError('The target must be set to uniprot')
-
-        proteins = get_unique_proteins(self.edges)
-        # when 500 error the server is down
-        try:
-            job_id = submit_id_mapping(
-                from_db="UniProtKB_AC-ID", to_db="UniProtKB", ids=proteins
-            )
-        except requests.exceptions.HTTPError as e:
-            typer.echo(typer.style(f'Error when submitting job: {e}. '
-                                   f'Please https://www.uniprot.org/id-mapping see if server is down.', fg=typer.colors.RED, bold=True))
-            raise e
-
-        if check_id_mapping_results_ready(job_id):
-            link = get_id_mapping_results_link(job_id)
-        results = get_id_mapping_results_search(link)
-
-        queries = []
-        sequences = []
-
-        # logging failed ids
-        if 'failedIds' in results:
-            logging.warning(results['failedIds'])
-        for result in results['results']:
-            queries.append(result['from'])
-            # code below return None if the key is not found
-            sequence = result.get('to', {}).get('sequence', {}).get('value', '')
-            sequences.append(sequence)
-
-        self.protein_features = dict(zip(queries, sequences))
+    # def get_protein_features(self) -> dict:
+    #     '''
+    #     Get the protein features
+    #     '''
+    #     if self.id_converter is None or self.id_converter.target != 'uniprot':
+    #         raise ValueError('The target must be set to uniprot')
+    #
+    #     proteins = get_unique_proteins(self.edges)
+    #     # when 500 error the server is down
+    #     try:
+    #         job_id = submit_id_mapping(
+    #             from_db="UniProtKB_AC-ID", to_db="UniProtKB", ids=proteins
+    #         )
+    #     except requests.exceptions.HTTPError as e:
+    #         typer.echo(typer.style(f'Error when submitting job: {e}. '
+    #                                f'Please https://www.uniprot.org/id-mapping see if server is down.', fg=typer.colors.RED, bold=True))
+    #         raise e
+    #
+    #     if check_id_mapping_results_ready(job_id):
+    #         link = get_id_mapping_results_link(job_id)
+    #     results = get_id_mapping_results_search(link)
+    #
+    #     queries = []
+    #     sequences = []
+    #
+    #     # logging failed ids
+    #     if 'failedIds' in results:
+    #         logging.warning(results['failedIds'])
+    #     for result in results['results']:
+    #         queries.append(result['from'])
+    #         # code below return None if the key is not found
+    #         sequence = result.get('to', {}).get('sequence', {}).get('value', '')
+    #         sequences.append(sequence)
+    #
+    #     self.protein_features = dict(zip(queries, sequences))
 
 
     def to_networkx(self) -> nx.DiGraph:
         '''
         Convert the graph to networkx
         '''
-        G = nx.from_pandas_edgelist(self.expand_undirected_edges(),
-                                    source='entry1', target='entry2', edge_attr=['name', 'type', 'value', 'direction', 'entry1_type', 'entry2_type',], create_using=nx.DiGraph())
+        G = nx.from_pandas_edgelist(self.edges,
+                                    source='entry1', target='entry2', edge_attr=['type',  'subtype_name', 'subtype_value', 'entry1_type', 'entry2_type',], create_using=nx.DiGraph())
 
         # set node attribute
         # create dict with key in self.proteins and value as "gene"
@@ -448,8 +443,14 @@ class KeggGraph():
         # combine the two dictionaries
         node_attributes = {**{protein: 'gene' for protein in self.proteins},
                            **{molecule: 'compound' for molecule in self.compounds}}
-
         nx.set_node_attributes(G, node_attributes, name='type')
+
+        # todo: define different type of edges
+        # protein -> compound
+        # protein -> protein
+        # compound -> compound
+        # compound -> protein
+        # nx.set_edge_attributes(G, )
         return G
 
 
@@ -459,30 +460,6 @@ class KeggGraph():
         '''
         # if indirection is "undirected", add the reverse edge
         return pd.concat([self.edges, self.edges[self.edges['direction'] == 'undirected'].rename(columns={'entry1': 'entry2', 'entry2': 'entry1'})])
-
-
-    def to_homogenous_pyg_data(self):
-        '''
-        Convert the graph to PyG data
-        '''
-        if self.type == 'gene':
-            # convert the graph to networkx
-            G = self.to_networkx()
-            # add embedding to the node attributes
-            nx.set_node_attributes(G, self.protein_embedding, name='embedding')
-            # convert the graph to PyG data
-            data =  pyg.utils.from_networkx(G, node_attrs=['embedding'])
-        elif self.type == 'metabolite':
-            # convert the graph to networkx
-            G = self.to_networkx()
-            # add embedding to the node attributes
-            nx.set_node_attributes(G, self.mol_embedding, name='embedding')
-            # convert the graph to PyG data
-            data =  pyg.utils.from_networkx(G, node_attrs=['embedding'])
-
-        return data
-
-
 
 
     #
