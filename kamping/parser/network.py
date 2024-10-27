@@ -63,7 +63,7 @@ class KeggGraph():
         self.compound_id_type = 'kegg'
 
         self.root = ET.parse(input_data).getroot()
-        self.logger.info(f"Now parsing: {self.root.get('title')}...")
+        self.logger.info(f"Now parsing: {self.root.get('name')}...")
         self.entry_dictionary = utils.entry_id_conv_dict(self.root, unique=unique)
         self.edges = self.get_edges()
 
@@ -75,7 +75,7 @@ class KeggGraph():
         if self.auto_correction is not None:
             self.auto_fix_relation()
 
-        logging.info(f"Graph {self.root.get('name')} parsed successfully!")
+        self.logger.info(f"Graph {self.root.get('name')} parsed successfully!")
 
     def get_edges(self) -> pd.DataFrame:
         """

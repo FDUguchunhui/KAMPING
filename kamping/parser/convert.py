@@ -25,20 +25,26 @@ app = typer.Typer()
 
 class Converter:
     def __init__(self, species: str,
-                 gene_target: Literal['uniprot', 'ncbi'],
-                 compound_target: Union[None, Literal['pubchem', 'chebi']] = None,
+                 gene_target: Literal['uniprot', 'ncbi', 'kegg'] = 'uniprot',
+                 compound_target: Literal['pubchem', 'chebi', 'kegg'] = 'kegg',
                  unique: bool = False,
                  unmatched: Literal['drop', 'keep'] = 'drop',
-                 verbose: bool = False):
+                 verbose: bool = True):
+        self.logger = logging.getLogger()
+        if verbose:
+            self.logger.setLevel(logging.INFO)
         self.species = species
         self.unique = unique
         self.gene_target = gene_target
         self.compound_target = compound_target
         self.unmatched = unmatched
-        self.gene_conv_dict = self.get_gene_conv_dict()
+
+        self.gene_conv_dict = None
+        if self.gene_target != 'kegg':
+            self.gene_conv_dict = self.get_gene_conv_dict()
         self.compound_conv_dict = None
         # convert compouund ID if asked
-        if self.compound_target is not None:
+        if self.compound_target != 'kegg':
             # append compound conversion dict to gene conversion dict
             self.compound_conv_dict = self.get_compound_conv_dict()
 
@@ -59,21 +65,28 @@ class Converter:
 
         # Map to convert KEGG IDs to target IDs. Note lists are returned
         # for some conversions.
-        df.loc[df['entry1_type'] == 'gene', 'entry1_conv'] = df.loc[df['entry1_type'] == 'gene', 'entry1'].map(self.gene_conv_dict)
-        df.loc[df['entry2_type'] == 'gene', 'entry2_conv'] = df.loc[df['entry2_type'] == 'gene', 'entry2'].map(self.gene_conv_dict)
+        if self.gene_conv_dict is not None:
+            df.loc[df['entry1_type'] == 'gene', 'entry1_conv'] = df.loc[df['entry1_type'] == 'gene', 'entry1'].map(self.gene_conv_dict)
+            df.loc[df['entry2_type'] == 'gene', 'entry2_conv'] = df.loc[df['entry2_type'] == 'gene', 'entry2'].map(self.gene_conv_dict)
+        else:
+            # if no gene conversion is needed, fill with original values
+            df.loc[df['entry1_type'] == 'gene', 'entry1_conv'] = df.loc[df['entry1_type'] == 'gene', 'entry1']
+            df.loc[df['entry2_type'] == 'gene', 'entry2_conv'] = df.loc[df['entry2_type'] == 'gene', 'entry2']
 
         if self.compound_conv_dict is not None:
             df.loc[df['entry1_type'] == 'compound', 'entry1_conv'] = df.loc[df['entry1_type'] == 'compound', 'entry1'].map(self.compound_conv_dict)
             df.loc[df['entry2_type'] == 'compound', 'entry2_conv'] = df.loc[df['entry2_type'] == 'compound', 'entry2'].map(self.compound_conv_dict)
+        else:
+            # if no compound conversion is needed, fill with original values
+            df.loc[df['entry1_type'] == 'compound', 'entry1_conv'] = df.loc[df['entry1_type'] == 'compound', 'entry1']
+            df.loc[df['entry2_type'] == 'compound', 'entry2_conv'] = df.loc[df['entry2_type'] == 'compound', 'entry2']
 
         # umatched machanism
         if self.unmatched == 'drop':
             # drop rows with unmatched gene entries
             # NAN conversion are present in form of empty list
-            df = df[~((df['entry1'].str.startswith('hsa')) & (df['entry1_conv'].apply(lambda x: x == [])))]
-            df = df[~((df['entry2'].str.startswith('hsa')) & (df['entry2_conv'].apply(lambda x: x == [])))]
-            df['entry1'] = df['entry1_conv'].fillna(df['entry1'])
-            df['entry2'] = df['entry2_conv'].fillna(df['entry2'])
+            df = df[~(df['entry1_conv'].isna())]
+            df = df[~(df['entry2_conv'].isna())]
         elif self.unmatched == 'keep':
             # Fills nans with entries from original columns
             df['entry1'] = df['entry1_conv'].fillna(df['entry1'])
@@ -98,7 +111,6 @@ class Converter:
 
         # log work done
         logging.info(f'Conversion of {graph_name} complete!')
-
         return df
 
 
@@ -119,12 +131,17 @@ class Converter:
         # print work done
         typer.echo(typer.style(f'Conversion of {file.name} complete!', fg=typer.colors.GREEN, bold=True))
 
-    def convert(self, graph):
+    def convert(self, graph) -> None:
         '''
         Converts a graph of KEGG IDs to UniProt or NCBI IDs
         '''
+        if graph.protein_id_type == self.gene_target and graph.compound_id_type == self.compound_target:
+            logging.info(f'''{graph.root.get("name")} already in gene: {self.gene_target} format
+                         and compound: {self.compound_target} format. No nothing has been done.''')
+            return
         graph.edges = self._process_dataframe(graph)
         graph.protein_id_type = self.gene_target
+        graph.compound_id_type = self.compound_target
 
 
     def get_gene_conv_dict(self):
@@ -156,11 +173,13 @@ def conv_dict_from_url(url):
     target = []
     for resp in response:
         target_id, kegg_id = resp.rsplit()
-        # target.append(re.sub(r'^[^:]+:', '', target_id))
         target.append(target_id)
         kegg.append(kegg_id)
 
-    d = defaultdict(list)
+    d = dict()
     for key, value in zip(kegg, target):
+        # initialize the key if it is not in the dictionary
+        if key not in d:
+            d[key] = []
         d[key].append(value)
     return d
