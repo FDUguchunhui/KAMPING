@@ -73,10 +73,11 @@ class TestGenesInteractionParser:
         '''
         Test with id_conversion='uniprot'
         '''
-        id_converter = Converter('hsa', target='uniprot')
-        output_df = parse_kgml_file(test_file, type="gene", id_converter=id_converter,
-                                    unique=False, verbose=False)
-        snapshot.assert_match(output_df)
+        id_converter = Converter('hsa', gene_target='uniprot')
+        graph = KeggGraph(test_file, type="gene",
+                          unique=False, verbose=False)
+        id_converter.convert(graph)
+        snapshot.assert_match(graph.edges)
 
     def test_parse_with_multiple_subtype(self):
         '''expect multiple rows for each relation if there are multiple subtypes'''
@@ -250,7 +251,7 @@ class TestGenesInteractionParser:
         '''
         xml_data = io.StringIO(xml_data)
         interaction = KeggGraph(input_data=xml_data, type='mpi', auto_correction='remove', unique=False,
-                                id_converter=None, verbose=False)
+                                verbose=False)
         assert interaction.interaction.empty
         # interaction = Interaction(input_data=xml_data, type='mpi', auto_relation_fix='fix', unique=False, id_conversion=None, names=False, verbose=False)
         # assert len(interaction.data) == 1

@@ -6,15 +6,17 @@
 """
 
 import json
+import logging
 import pathlib
 import re
+from collections import defaultdict
 from pathlib import Path
 from urllib import request as request
 
 import pandas as pd
 import typer
 from pandas import DataFrame
-from typing import Literal, overload
+from typing import Literal, overload, Union
 
 pd.options.mode.chained_assignment = None
 app = typer.Typer()
@@ -23,18 +25,27 @@ app = typer.Typer()
 
 class Converter:
     def __init__(self, species: str,
-                 target: Literal['uniprot', 'ncbi'] = 'uniprot',
+                 gene_target: Literal['uniprot', 'ncbi'],
+                 compound_target: Union[None, Literal['pubchem', 'chebi']] = None,
                  unique: bool = False,
                  unmatched: Literal['drop', 'keep'] = 'drop',
                  verbose: bool = False):
-        # todo: folder or file should be input for function
         self.species = species
         self.unique = unique
-        self.target = target
+        self.gene_target = gene_target
+        self.compound_target = compound_target
         self.unmatched = unmatched
-        self.conversion_dict = self.get_conversion_dictionary()
+        self.gene_conv_dict = self.get_gene_conv_dict()
+        self.compound_conv_dict = None
+        # convert compouund ID if asked
+        if self.compound_target is not None:
+            # append compound conversion dict to gene conversion dict
+            self.compound_conv_dict = self.get_compound_conv_dict()
 
-    def _process_dataframe(self, df):
+    def _process_dataframe(self, graph):
+        df = graph.edges
+        graph_name = graph.root.get('name')
+
         if self.unique:
             # Extract the terminal modifiers and create a new column
             # This enables the re-addition of the modifiers at the
@@ -48,21 +59,25 @@ class Converter:
 
         # Map to convert KEGG IDs to target IDs. Note lists are returned
         # for some conversions.
-        df['entry1_conv'] = df['entry1'].map(self.conversion_dict)
-        df['entry2_conv'] = df['entry2'].map(self.conversion_dict)
+        df.loc[df['entry1_type'] == 'gene', 'entry1_conv'] = df.loc[df['entry1_type'] == 'gene', 'entry1'].map(self.gene_conv_dict)
+        df.loc[df['entry2_type'] == 'gene', 'entry2_conv'] = df.loc[df['entry2_type'] == 'gene', 'entry2'].map(self.gene_conv_dict)
+
+        if self.compound_conv_dict is not None:
+            df.loc[df['entry1_type'] == 'compound', 'entry1_conv'] = df.loc[df['entry1_type'] == 'compound', 'entry1'].map(self.compound_conv_dict)
+            df.loc[df['entry2_type'] == 'compound', 'entry2_conv'] = df.loc[df['entry2_type'] == 'compound', 'entry2'].map(self.compound_conv_dict)
 
         # umatched machanism
         if self.unmatched == 'drop':
             # drop rows with unmatched gene entries
-            df = df[~((df['entry1'].str.startswith('hsa')) & (df['entry1_conv'].isna()))]
-            df = df[~((df['entry2'].str.startswith('hsa')) & (df['entry2_conv'].isna()))]
+            # NAN conversion are present in form of empty list
+            df = df[~((df['entry1'].str.startswith('hsa')) & (df['entry1_conv'].apply(lambda x: x == [])))]
+            df = df[~((df['entry2'].str.startswith('hsa')) & (df['entry2_conv'].apply(lambda x: x == [])))]
             df['entry1'] = df['entry1_conv'].fillna(df['entry1'])
             df['entry2'] = df['entry2_conv'].fillna(df['entry2'])
         elif self.unmatched == 'keep':
             # Fills nans with entries from original columns
             df['entry1'] = df['entry1_conv'].fillna(df['entry1'])
             df['entry2'] = df['entry2_conv'].fillna(df['entry2'])
-
 
         # Drop the extra column as it's all now in entry1/2 columns
         df = df.drop(['entry1_conv', 'entry2_conv'], axis=1)
@@ -75,14 +90,17 @@ class Converter:
             df['entry2'] = df['entry2'] + df['match2']
             df = df.drop(['match1', 'match2'], axis=1)
 
+        # check if there are any NA entries
+        if (df[['entry1', 'entry2']].isna().any().any()):
+            # remove row with entry1 or entry NA and print warning
+            df = df.dropna(subset=['entry1', 'entry2'])
+            logging.warning(f'{graph_name} dropped due to NA entries')
+
+        # log work done
+        logging.info(f'Conversion of {graph_name} complete!')
+
         return df
 
-    def convert_dataframe(self, df: DataFrame) -> DataFrame:
-        '''
-        Converts a dataframe of KEGG IDs to UniProt or NCBI IDs
-        '''
-        df_out = self._process_dataframe(df)
-        return df_out
 
     def convert_file(self, input_data: str)  -> DataFrame:
         '''
@@ -90,7 +108,7 @@ class Converter:
         '''
         file = Path(input_data)
         df = pd.read_csv(input_data, delimiter='\t')
-        typer.echo(f"Now converting {file.name} to {self.target} IDs...")
+        typer.echo(f"Now converting {file.name} to {self.gene_target} IDs...")
         df_out = self._process_dataframe(df)
         return df_out
 
@@ -105,32 +123,44 @@ class Converter:
         '''
         Converts a graph of KEGG IDs to UniProt or NCBI IDs
         '''
-        graph.edges = self.convert_dataframe(graph.edges)
-        graph.protein_id_type = self.target
+        graph.edges = self._process_dataframe(graph)
+        graph.protein_id_type = self.gene_target
 
 
-    def get_conversion_dictionary(self):
+    def get_gene_conv_dict(self):
         '''
         Convert KEGG gene IDs to either NCBI gene IDs or UniProt IDs.
         '''
-        if self.target == 'uniprot':
+        if self.gene_target == 'uniprot':
             url = 'http://rest.kegg.jp/conv/%s/uniprot'
-        elif self.target == 'ncbi':
+        elif self.gene_target == 'ncbi':
             url = 'http://rest.kegg.jp/conv/%s/ncbi-geneid'
-        response = request.urlopen(url % self.species).read().decode('utf-8')
-        response = response.rstrip().rsplit('\n')
-        kegg = []
-        target = []
+        return conv_dict_from_url(url % self.species)
 
-        for resp in response:
-            target.append(resp.rsplit()[0])
-            kegg.append(resp.rsplit()[1])
-        # remove prefix string before ":"
-        target = [re.sub(r'^[^:]+:', '', s) for s in target]
-        d = {}
-        for key, value in zip(kegg, target):
-            if key not in d:
-                d[key] = [value]
-            else:
-                d[key].append(value)
-        return d
+
+    def get_compound_conv_dict(self):
+        '''
+        Convert KEGG compound IDs to PubChem compound IDs.
+        '''
+        url_compound = f'http://rest.kegg.jp/conv/compound/{self.compound_target}'
+        url_glycan = f'http://rest.kegg.jp/conv/glycan/{self.compound_target}'
+        url_drug = f'http://rest.kegg.jp/conv/drug/{self.compound_target}'
+        compound_conv_dict = {**conv_dict_from_url(url_compound), **conv_dict_from_url(url_glycan), **conv_dict_from_url(url_drug)}
+        return compound_conv_dict
+
+
+def conv_dict_from_url(url):
+    response = request.urlopen(url).read().decode('utf-8')
+    response = response.rstrip().rsplit('\n')
+    kegg = []
+    target = []
+    for resp in response:
+        target_id, kegg_id = resp.rsplit()
+        # target.append(re.sub(r'^[^:]+:', '', target_id))
+        target.append(target_id)
+        kegg.append(kegg_id)
+
+    d = defaultdict(list)
+    for key, value in zip(kegg, target):
+        d[key].append(value)
+    return d

@@ -129,14 +129,14 @@ def test_get_group_to_id_mapping():
 
 
 def test_get_conversion_dictionary():
-    converter = Converter(species='hsa', target='uniprot')
+    converter = Converter(species='hsa', gene_target='uniprot')
     graph = Mock()
     graph.edges = pd.DataFrame([['hsa:1', 'hsa:10', 'PPrel', 'name', 'value', 'gene', 'gene']],
                                columns=['entry1', 'entry2', 'type',  'subtype_name', 'subtype_value', 'entry1_type', 'entry2_type'])
-    expected = pd.DataFrame([['P04217', 'P11245', 'PPrel', 'name', 'value', 'gene', 'gene'],
-                             ['P04217', 'A4Z6T7', 'PPrel', 'name', 'value', 'gene', 'gene'],
-                             ['V9HWD8', 'P11245', 'PPrel','name', 'value', 'gene', 'gene'],
-                             ['V9HWD8', 'A4Z6T7', 'PPrel', 'name', 'value', 'gene', 'gene']],
+    expected = pd.DataFrame([['up:P04217', 'up:P11245', 'PPrel', 'name', 'value', 'gene', 'gene'],
+                             ['up:P04217', 'up:A4Z6T7', 'PPrel', 'name', 'value', 'gene', 'gene'],
+                             ['up:V9HWD8', 'up:P11245', 'PPrel','name', 'value', 'gene', 'gene'],
+                             ['up:V9HWD8', 'up:A4Z6T7', 'PPrel', 'name', 'value', 'gene', 'gene']],
                             columns=['entry1', 'entry2', 'type',  'subtype_name', 'subtype_value', 'entry1_type', 'entry2_type'])
     converter.convert(graph)
     # assert graph.edges == expected

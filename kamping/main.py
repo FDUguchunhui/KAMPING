@@ -72,7 +72,7 @@ def network(type: str, species: str, input_data: str, out_dir:str,
 
     id_converter = None
     if id_conversion is None:
-        id_converter = Converter(species, target=id_conversion, unique=unique, verbose=verbose)
+        id_converter = Converter(species, gene_target=id_conversion, unique=unique, verbose=verbose)
 
     if Path(input_data).is_dir():
         files = sorted(Path(input_data).glob('*.xml'))

@@ -10,23 +10,17 @@ import logging
 import os
 from typing import Union, Any
 import h5py
-import requests.exceptions
-from overrides import overrides
 from typing_extensions import Literal
 import typer
 import pandas as pd
 import networkx as nx
 import xml.etree.ElementTree as ET
-import torch_geometric as pyg
 from rdkit import RDLogger
-from kamping.uniprot.uniprot import submit_id_mapping, check_id_mapping_results_ready, get_id_mapping_results_link, \
-    get_id_mapping_results_search
 
 # Disable specific log
 RDLogger.DisableLog('rdApp.warning')
 RDLogger.DisableLog('rdApp.error')
 
-from kamping.mol.utils import fetch_mol_file_string, get_smiles
 from kamping.parser.utils import get_unique_compound_values, get_unique_proteins
 from kamping.parser import utils
 from kamping.parser import protein_metabolite_parser
@@ -45,12 +39,18 @@ class KeggGraph():
                  multi_substrate_as_interaction: bool = True,
                  auto_correction: Union[None, Literal['fix', 'remove']] = 'fix',
                  directed: bool = True,
-                 verbose: bool = False):
+                 verbose: bool = True):
         '''
         Initialize the GenesInteractionParser object
 
         '''
         # todo: add function to filter common compounds
+        self.logger = logging.getLogger(self.__class__.__name__)
+
+
+        if verbose:
+            self.logger.setLevel(logging.INFO)
+
         self.auto_correction = auto_correction
         self.input_data = input_data
         self.type = type
@@ -62,9 +62,8 @@ class KeggGraph():
         self.protein_id_type = 'kegg'
         self.compound_id_type = 'kegg'
 
-        if self.verbose:
-            typer.echo(typer.style(f"Now parsing: {self.root.get('title')}...", fg=typer.colors.GREEN, bold=False))
         self.root = ET.parse(input_data).getroot()
+        self.logger.info(f"Now parsing: {self.root.get('title')}...")
         self.entry_dictionary = utils.entry_id_conv_dict(self.root, unique=unique)
         self.edges = self.get_edges()
 
@@ -76,9 +75,7 @@ class KeggGraph():
         if self.auto_correction is not None:
             self.auto_fix_relation()
 
-        # # remove prefix from entry1 and entry2
-        # self.edges['entry1'] = self.edges['entry1'].str.replace(r'^[^:]+:', '', regex=True)
-        # self.edges['entry2'] = self.edges['entry2'].str.replace(r'^[^:]+:', '', regex=True)
+        logging.info(f"Graph {self.root.get('name')} parsed successfully!")
 
     def get_edges(self) -> pd.DataFrame:
         """
@@ -107,9 +104,6 @@ class KeggGraph():
         df['entry1_type'] = df['entry1'].map(lambda x: self.entry_dictionary.at[x, 'type'])
         df['entry2_type'] = df['entry2'].map(lambda x: self.entry_dictionary.at[x, 'type'])
 
-        if df.empty:
-            # throw error if no edges are found
-            raise FileNotFoundError(f'ERROR: File "{self.input_data}" cannot be parsed.\nVisit {pathway_link} for pathway details.\nThere are likely no edges in which to parse...')
         # process the edge direction
         df = self.process_edge_direction(df)
 
@@ -138,6 +132,13 @@ class KeggGraph():
         # rename columns name to subtype_name and value to subtype_value
         df = df.rename(columns={'name': 'subtype_name', 'value': 'subtype_value'})
 
+        # if df is len, raise value error
+        if df.empty:
+            # throw error if no edges are found
+            raise FileNotFoundError(f'''ERROR: File "{self.input_data}" cannot be parsed.\n
+            Visit {pathway_link} for pathway details.\n
+            There are likely no edges in which to parse...''')
+
         # sort based on entry1 and entry2
         return df.sort_values(by=['entry1', 'entry2']).reset_index(drop=True)
 
@@ -158,7 +159,7 @@ class KeggGraph():
     @property
     def proteins(self):
         # create node features
-        return utils.get_unique_proteins(self.edges)
+        return get_unique_proteins(self.edges)
 
     @property
     def compounds(self):
@@ -171,6 +172,10 @@ class KeggGraph():
     @property
     def num_edges(self):
         return len(self.edges)
+
+    @property
+    def name(self):
+        return self.root.get('name')
 
     def __str__(self):
         # return the title of the graph and the number of nodes and edges
@@ -233,15 +238,18 @@ class KeggGraph():
             for target in nodes_of_type:
                 if source != target:
                     # Find all paths from source to target
-                    for path in nx.all_simple_paths(G, source=source, target=target):
-                        # Check if all intermediate nodes are compounds
-                        path_propagated_node_check = [G.nodes[node]['entry_type'] == type_remove for node in path[1:-1]]
-                        # check if it not empty and all intermediate nodes are compounds
-                        if path_propagated_node_check and all(path_propagated_node_check):
-                            if type_keep == 'gene':
-                                new_edges.append((source, target, 'PPrel', 'compound-propagation', 'custom', 'gene', 'gene'))
-                            elif type_keep == 'compound':
-                                new_edges.append((source, target, 'CCrel', 'gene-propagation', 'custom', 'compound', 'compound'))
+                    try:
+                        path = nx.shortest_path(G, source=source, target=target)
+                    except nx.NetworkXNoPath:
+                        path = []
+                    # Check if all intermediate nodes are compounds
+                    path_propagated_node_check = [G.nodes[node]['entry_type'] == type_remove for node in path[1:-1]]
+                    # check if it not empty and all intermediate nodes are compounds
+                    if path_propagated_node_check and all(path_propagated_node_check):
+                        if type_keep == 'gene':
+                            new_edges.append((source, target, 'PPrel', 'compound-propagation', 'custom', 'gene', 'gene'))
+                        elif type_keep == 'compound':
+                            new_edges.append((source, target, 'CCrel', 'gene-propagation', 'custom', 'compound', 'compound'))
         # add new edges to the df
         new_edges_df = pd.DataFrame(new_edges, columns=['entry1', 'entry2', 'type', 'name', 'value', 'entry1_type', 'entry2_type'])
         # drop duplicates based on entry1, entry2, type, name, value
@@ -274,8 +282,6 @@ class KeggGraph():
             self.edges = self.edges[~(self.edges['entry1_type'] == 'gene') & (self.edges['entry2_type'] == 'compound') & (self.edges['type'] != 'PCrel')]
             # when entry1_type == "compound" and entry2_type == "gene" and type != "PCrel" then type = "PCrel"
             self.edges = self.edges[~(self.edges['entry1_type'] == 'compound') & (self.edges['entry2_type'] == 'gene') & (self.edges['type'] != 'PCrel')]
-
-
 
     def group_expansion(self, df: pd.DataFrame) -> pd.DataFrame:
         '''
@@ -443,7 +449,7 @@ class KeggGraph():
         # combine the two dictionaries
         node_attributes = {**{protein: 'gene' for protein in self.proteins},
                            **{molecule: 'compound' for molecule in self.compounds}}
-        nx.set_node_attributes(G, node_attributes, name='type')
+        nx.set_node_attributes(G, node_attributes, name='node_type')
 
         # todo: define different type of edges
         # protein -> compound

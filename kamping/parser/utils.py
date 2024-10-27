@@ -1,17 +1,12 @@
-import logging
 import re
 from collections import defaultdict
 import urllib.request as request
-from typing import Union, Any
 
 import h5py
 import networkx as nx
 import numpy as np
 import pandas as pd
-import scikit_mol.fingerprints
-import rdkit.Chem as Chem
 import torch_geometric.utils, torch_geometric.data
-from kamping.mol.utils import fetch_mol_file_string
 
 
 def entry_id_conv_dict(root, unique=False) -> pd.DataFrame:
@@ -175,70 +170,6 @@ def get_group_to_id_mapping(root):
         group_to_id[group_id] = components
 
     return group_to_id
-
-
-def get_smiles(interaction:pd.DataFrame) -> dict:
-    smiles = []
-    compounds = get_unique_compound_values(interaction)
-    for compound in compounds:
-        # this is inefficient no need to convert back and forth
-        mol_file_string = fetch_mol_file_string(compound)
-        smiles.append( Chem.MolToSmiles(Chem.MolFromMolBlock(mol_file_string)))
-    return dict(zip(compounds, smiles))
-
-
-def get_mol_embeddings(graphs: Union[Any, list[Any]], transformer, dim=1024, **kwargs) -> dict[list, np.array]:
-    '''
-    Get the molecular embeddings
-    '''
-    if transformer == 'morgan':
-        transformer = scikit_mol.fingerprints.MorganFingerprintTransformer(nBits=dim, **kwargs)
-    elif transformer == 'rdkit':
-        transformer = scikit_mol.fingerprints.RDKitFingerprintTransformer(fpSize=dim, **kwargs)
-    elif transformer == 'atom-pair':
-        transformer = scikit_mol.fingerprints.AtomPairFingerprintTransformer(nBits=dim, **kwargs)
-    elif transformer == 'topological':
-        transformer = scikit_mol.fingerprints.TopologicalTorsionFingerprintTransformer(nBits=dim, **kwargs)
-    else:
-        raise ValueError('Invalid transformer')
-
-    # combine all proteins from the graph in the list into one
-    unique_compounds = set()
-    if not isinstance(graphs, list):
-        unique_compounds = graphs.compounds
-    else:
-        for graph in graphs:
-            unique_compounds.update(graph.compounds)
-
-    # get the molecule from the unique compounds and return a DataFrame
-    mols = get_molecule(unique_compounds, mol_column='ROMol')
-
-    # get rows id with NaN in the ROMol column
-    valid_row_id = mols.loc[~mols['ROMol'].isna(), 'id'].tolist()
-    unvalid_row_id = mols.loc[mols['ROMol'].isna(), 'id'].tolist()
-
-    logging.warning(f'''Successfully parse {len(mols) - len(unvalid_row_id)} rows with valid SMILES from the MOL file!\n'
-                    total {len(unvalid_row_id)} Invalid rows with "Unhandled" in the ROMol column''')
-    if not unvalid_row_id:
-        logging.warning(f' {unvalid_row_id}, removed from the final output!')
-
-    smiles = mols.dropna(subset=['ROMol'])
-    # get the molecular vector
-    mol_embeddings = transformer.transform(smiles['ROMol'])
-    mol_embeddings = dict(zip(valid_row_id, mol_embeddings))
-    return mol_embeddings
-
-
-def get_molecule(unique_compounds, mol_column='ROMol') -> pd.DataFrame:
-    mols = []
-    for compound in unique_compounds:
-        # this is inefficient no need to convert back and forth
-        mol_file_string = fetch_mol_file_string(compound)
-        mols.append(Chem.MolFromMolBlock(mol_file_string))
-    # create a pd.DataFrame
-    mols = pd.DataFrame({'id': list(unique_compounds), mol_column: mols})
-    return mols
-
 
 def convert_to_pyg_data(graph, mol_embedding: dict, protein_embedding: dict) -> torch_geometric.data.Data:
     '''
