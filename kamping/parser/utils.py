@@ -1,4 +1,5 @@
 import logging
+import os
 import re
 from collections import defaultdict
 import urllib.request as request
@@ -9,8 +10,8 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 import requests
-import torch_geometric.utils, torch_geometric.data
-import typer
+import torch_geometric.utils
+from torch_geometric.data import Data
 
 
 def entry_id_conv_dict(root, unique=False) -> pd.DataFrame:
@@ -175,7 +176,7 @@ def get_group_to_id_mapping(root):
 
     return group_to_id
 
-def convert_to_pyg_data(graph, mol_embedding: dict, protein_embedding: dict) -> torch_geometric.data.Data:
+def convert_to_pyg_data(graph, mol_embedding: dict, protein_embedding: dict) -> Data:
     '''
     Convert the graph to PyG data
     '''
@@ -229,6 +230,10 @@ def kgml(species, out_dir, verbose=True):
     kgml('hsa', Path('path/to/save/files'))
     -------
     """
+    # create path is it does not exist
+    out_dir = Path(out_dir)
+    out_dir.mkdir( parents=True, exist_ok=True)
+
     logger = logging.getLogger(__name__)
     if verbose:
         logger.setLevel(logging.INFO)

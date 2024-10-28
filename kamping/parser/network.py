@@ -11,7 +11,6 @@ import os
 from typing import Union, Any
 import h5py
 from typing_extensions import Literal
-import typer
 import pandas as pd
 import networkx as nx
 import xml.etree.ElementTree as ET
@@ -37,11 +36,42 @@ class KeggGraph():
                  unique: bool = False,
                  gene_group_as_interaction: bool = True,
                  multi_substrate_as_interaction: bool = True,
+                 remove_common_compounds: Union[None, list] = ['cpd:C00001', 'cpd:C00007', 'cpd:C00282'],
                  auto_correction: Union[None, Literal['fix', 'remove']] = 'fix',
                  directed: bool = True,
                  verbose: bool = True):
         '''
         Initialize the GenesInteractionParser object
+        Parameters
+        ----------
+        input_data: str
+            The path to the KGML file
+        type: str
+            The type of graph to parse. Options are 'gene', 'metabolite', 'mpi'
+        unique: bool
+            Whether to keep the terminal modifiers in the IDs
+        gene_group_as_interaction: bool
+            Whether to treat gene groups as interactions
+        multi_substrate_as_interaction: bool
+            Whether to treat reactions with multiple substrates as interactions
+        remove_common_compounds: list
+            A list of common compounds to remove from the graph. Default is ['cpd:C00001', 'cpd:C00007', 'cpd:C00282']
+            representing water, oxygen, and hydrogen
+        auto_correction: str
+            Whether to automatically correct the relations. Options are 'fix' or 'remove'
+        directed: bool
+            Whether to treat the graph as directed
+        verbose: bool
+            Whether to print out the progress of the conversion
+
+        Returns KeggGraph object
+
+        Usage
+        -----
+        graph = KeggGraph(input_data='hsa00010.xml', type='gene', verbose=True)
+        graph.edges
+        graph.genes
+        graph.compounds
 
         '''
         # todo: add function to filter common compounds
@@ -51,6 +81,7 @@ class KeggGraph():
         if verbose:
             self.logger.setLevel(logging.INFO)
 
+        self.remove_common_compounds = remove_common_compounds
         self.auto_correction = auto_correction
         self.input_data = input_data
         self.type = type
@@ -117,6 +148,11 @@ class KeggGraph():
         df = MPI_parser.parse_dataframe(df)
         # replace ECrel with reaction step2: add reaction
         df = pd.concat([df, self.get_reactions()])
+        if self.remove_common_compounds is not None:
+            # remove row with common compounds
+            df = df[~df['entry1'].isin(self.remove_common_compounds)]
+            df = df[~df['entry2'].isin(self.remove_common_compounds)]
+
         if self.type == 'metabolite':
             # propagate the compound to get gene only interaction
             df = self.propagate(df, type_keep='compound')

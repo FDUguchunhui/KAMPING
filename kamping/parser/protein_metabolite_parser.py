@@ -1,6 +1,7 @@
+import logging
+
 import pandas as pd
 from pathlib import Path
-import typer
 
 class ProteinMetabliteParser:
     '''
@@ -79,7 +80,7 @@ class ProteinMetabliteParser:
         try:
             df = self.parse_dataframe(df)
         except ValueError as e:
-            typer.echo(typer.style( f'check {file}, {e.args[0]}', fg=typer.colors.RED, bold=True))
+            logging.warning(f'check {file}, {e.args[0]}')
             return
         # export the DataFrame to a TSV file
         df.to_csv(Path(wd) / f'{Path(file).stem}_mpi.tsv', sep='\t', index=False)
@@ -165,7 +166,7 @@ def parse_to_mpi(input_data: str, wd: Path, keep_glycan=False, keep_PPI=False, v
             try:
                 protein_metabolite_parser.parse_file(file=file, wd=wd)
             except ValueError as e:
-                typer.echo(typer.style(e, fg=typer.colors.RED, bold=True))
+                logging.warning(e)
                 continue
     else:
         protein_metabolite_parser.parse_file(file=input_data, wd=wd)
