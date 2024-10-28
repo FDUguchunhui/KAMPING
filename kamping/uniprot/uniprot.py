@@ -11,7 +11,7 @@ import requests
 from requests.adapters import HTTPAdapter, Retry
 
 import kamping.utils
-from kamping.parser.utils import get_unique_proteins
+from kamping.parser.utils import get_unique_genes
 
 POLLING_INTERVAL = 3
 API_URL = "https://rest.uniprot.org"
@@ -215,7 +215,7 @@ if __name__ == '__main__':
     # print(len(get_unique_proteins(df, 'up')))
 
     df = kamping.utils.read_all_tsv_files('data/converted')
-    proteins = get_unique_proteins(df, 'up')
+    proteins = get_unique_genes(df, 'up')
 
     job_id = submit_id_mapping(
         from_db="UniProtKB_AC-ID", to_db="UniProtKB", ids=proteins

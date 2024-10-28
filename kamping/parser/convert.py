@@ -24,13 +24,37 @@ app = typer.Typer()
 
 
 class Converter:
+    ''''
+    Class to convert KEGG IDs to other IDs
+
+    Parameters
+    ----------
+    species: str
+        The species to convert the KEGG IDs to
+    gene_target: str
+        The target gene ID to convert to. Options are 'uniprot', 'ncbi', 'kegg', default is 'uniprot'
+    compound_target: str
+        The target compound ID to convert to. Options are 'pubchem', 'chebi', 'kegg', default is 'kegg'
+    unique: bool
+        Whether to keep the terminal modifiers in the IDs
+    unmatched: str
+        What to do with unmatched gene entries. Options are 'drop' or 'keep'
+    verbose: bool
+        Whether to print out the progress of the conversion
+
+    Usage
+    -----
+    converter = Converter(species='hsa', gene_target='uniprot', compound_target='pubchem')
+    converter.convert(graph)
+
+    '''
     def __init__(self, species: str,
-                 gene_target: Literal['uniprot', 'ncbi', 'kegg'] = 'uniprot',
+                 gene_target: Literal['uniprot', 'ncbi', 'kegg'] = 'kegg',
                  compound_target: Literal['pubchem', 'chebi', 'kegg'] = 'kegg',
                  unique: bool = False,
                  unmatched: Literal['drop', 'keep'] = 'drop',
                  verbose: bool = True):
-        self.logger = logging.getLogger()
+        self.logger = logging.getLogger(__name__)
         if verbose:
             self.logger.setLevel(logging.INFO)
         self.species = species
@@ -81,16 +105,21 @@ class Converter:
             df.loc[df['entry1_type'] == 'compound', 'entry1_conv'] = df.loc[df['entry1_type'] == 'compound', 'entry1']
             df.loc[df['entry2_type'] == 'compound', 'entry2_conv'] = df.loc[df['entry2_type'] == 'compound', 'entry2']
 
+
+
         # umatched machanism
         if self.unmatched == 'drop':
             # drop rows with unmatched gene entries
             # NAN conversion are present in form of empty list
             df = df[~(df['entry1_conv'].isna())]
             df = df[~(df['entry2_conv'].isna())]
+            df['entry1'] = df['entry1_conv']
+            df['entry2'] = df['entry2_conv']
+
         elif self.unmatched == 'keep':
-            # Fills nans with entries from original columns
-            df['entry1'] = df['entry1_conv'].fillna(df['entry1'])
-            df['entry2'] = df['entry2_conv'].fillna(df['entry2'])
+                # Fills nans with entries from original columns
+                df['entry1'] = df['entry1_conv'].fillna(df['entry1'])
+                df['entry2'] = df['entry2_conv'].fillna(df['entry2'])
 
         # Drop the extra column as it's all now in entry1/2 columns
         df = df.drop(['entry1_conv', 'entry2_conv'], axis=1)
@@ -107,10 +136,10 @@ class Converter:
         if (df[['entry1', 'entry2']].isna().any().any()):
             # remove row with entry1 or entry NA and print warning
             df = df.dropna(subset=['entry1', 'entry2'])
-            logging.warning(f'{graph_name} dropped due to NA entries')
+            self.logger.warning(f'{graph_name} dropped due to NA entries')
 
         # log work done
-        logging.info(f'Conversion of {graph_name} complete!')
+        self.logger.info(f'Conversion of {graph_name} complete!')
         return df
 
 
@@ -135,12 +164,12 @@ class Converter:
         '''
         Converts a graph of KEGG IDs to UniProt or NCBI IDs
         '''
-        if graph.protein_id_type == self.gene_target and graph.compound_id_type == self.compound_target:
+        if graph.gene_id_type == self.gene_target and graph.compound_id_type == self.compound_target:
             logging.info(f'''{graph.root.get("name")} already in gene: {self.gene_target} format
                          and compound: {self.compound_target} format. No nothing has been done.''')
             return
         graph.edges = self._process_dataframe(graph)
-        graph.protein_id_type = self.gene_target
+        graph.gene_id_type = self.gene_target
         graph.compound_id_type = self.compound_target
 
 

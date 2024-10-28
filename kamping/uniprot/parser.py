@@ -65,7 +65,7 @@ def get_protein_seqs_from_files(folder, output_path, batch:int=500) -> None:
     if not os.listdir(folder):
         raise ValueError(f"Folder {folder} is empty")
     df = kamping.utils.read_all_tsv_files(folder)
-    proteins = kamping.parser.utils.get_unique_proteins(df, 'up')
+    proteins = kamping.parser.utils.get_unique_genes(df, 'up')
 
     # todo: a naive for batch implementation
     # check Uniprot pagination for a better implementation

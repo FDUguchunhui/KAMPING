@@ -20,8 +20,7 @@ import typer
 from pathlib import Path
 
 from kamping.parser.network import KeggGraph
-from kamping.parser.call import kgml
-
+from kamping.parser.utils import kgml
 
 
 @click.group()

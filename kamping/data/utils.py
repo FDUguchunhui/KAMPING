@@ -32,8 +32,9 @@ def convert_to_pyg(graph, embeddings, unmatch_embeddings=None, verbose=True) -> 
     '''
     Convert the graph to PyG data
     '''
+    logger = logging.getLogger()
     if verbose:
-        logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+        logger.setLevel(logging.INFO)
 
     if not embeddings:
         raise ValueError('empty embeddings information given!')
@@ -46,7 +47,7 @@ def convert_to_pyg(graph, embeddings, unmatch_embeddings=None, verbose=True) -> 
         # add embedding to the node attributes
         nx.set_node_attributes(G, embeddings, name='embeddings')
         if graph.type == 'gene':
-            node_names = dict(zip(graph.proteins, graph.proteins))
+            node_names = dict(zip(graph.genes, graph.genes))
         else:
             node_names = dict(zip(graph.compounds, graph.compounds))
         nx.set_node_attributes(G, node_names, name='node_name')
@@ -59,6 +60,7 @@ def convert_to_pyg(graph, embeddings, unmatch_embeddings=None, verbose=True) -> 
     # logging succesful convert
     logging.info(f'{graph.name} converted to torch_geometric successfully')
     return data
+
 
 
 def convert_to_hetero_pyg(graph, protein_embeddings, mol_embeddings):
@@ -82,7 +84,7 @@ def get_uniprot_protein_embeddings(graphs: Union[Any, List[Any]], embedding_file
     if not isinstance(graphs, list):
         graphs = [graphs]
 
-    protein_id_types = [graph.protein_id_type for graph in graphs]
+    protein_id_types = [graph.gene_id_type for graph in graphs]
     if not all([protein_id_type == 'uniprot' for protein_id_type in protein_id_types]):
         raise ValueError('Protein ID is not uniprot! Please use converter to convert protein ID into uniprot')
 
@@ -90,7 +92,7 @@ def get_uniprot_protein_embeddings(graphs: Union[Any, List[Any]], embedding_file
     # combine all proteins from the graph in the list into one
     unique_proteins = set()
     for graph in graphs:
-        unique_proteins.update(graph.proteins)
+        unique_proteins.update(graph.genes)
 
     # get the protein embeddings
     protein_embeddings = {protein: embeddings[protein.removeprefix('up:')] for protein in unique_proteins if protein.removeprefix('up:') in embeddings.keys()}
@@ -119,8 +121,13 @@ def get_smiles(interaction:pd.DataFrame) -> dict:
         smiles.append( Chem.MolToSmiles(Chem.MolFromMolBlock(mol_file_string)))
     return dict(zip(compounds, smiles))
 
-def get_data_mol(graphs: Union[Any, list[Any]]) -> pd.DataFrame:
+def get_kegg_mol(graphs: Union[Any, list[Any]]) -> pd.DataFrame:
     '''Return a dataframe with first column compound id and second column contain mol class instance'''
+
+    # check the compound ID type for all graphs is "kegg"
+    compound_id_types = [graph.compound_id_type for graph in graphs]
+    if not all([compound_id_type == 'kegg' for compound_id_type in compound_id_types]):
+        raise ValueError('Compound ID is not kegg! Consider recreate graphs without compound ID conversion')
 
     # combine all proteins from the graph in the list into one
     unique_compounds = set()
@@ -151,7 +158,7 @@ def get_mol_embeddings_from_dataframe(mols, transformer, dim=1024, **kwargs) -> 
     unvalid_row_id = mols.loc[mols['ROMol'].isna(), 'id'].tolist()
 
     logging.warning(f'''Successfully parse {len(mols) - len(unvalid_row_id)} rows with valid SMILES from the MOL file!\n'
-                    total {len(unvalid_row_id)} Invalid rows with "Unhandled" in the ROMol column''')
+                    total {len(unvalid_row_id)} Invalid rows with "None" in the ROMol column''')
     if not unvalid_row_id:
         logging.warning(f' {unvalid_row_id}, removed from the final output!')
 
@@ -168,7 +175,7 @@ def get_mol_embeddings(graphs: Union[Any, list[Any]], transformer, dim=1024, **k
     '''
 
     # get dataframe with a column has mol instance
-    mols = get_data_mol(graphs)
+    mols = get_kegg_mol(graphs)
     return get_mol_embeddings_from_dataframe(mols, transformer, **kwargs)
 
 

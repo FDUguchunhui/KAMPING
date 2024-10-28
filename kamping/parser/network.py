@@ -21,7 +21,7 @@ from rdkit import RDLogger
 RDLogger.DisableLog('rdApp.warning')
 RDLogger.DisableLog('rdApp.error')
 
-from kamping.parser.utils import get_unique_compound_values, get_unique_proteins
+from kamping.parser.utils import get_unique_compound_values, get_unique_genes
 from kamping.parser import utils
 from kamping.parser import protein_metabolite_parser
 
@@ -35,7 +35,7 @@ class KeggGraph():
                  input_data: str,
                  type: Literal['gene', 'metabolite', 'mpi'],
                  unique: bool = False,
-                 protein_group_as_interaction: bool = True,
+                 gene_group_as_interaction: bool = True,
                  multi_substrate_as_interaction: bool = True,
                  auto_correction: Union[None, Literal['fix', 'remove']] = 'fix',
                  directed: bool = True,
@@ -55,11 +55,11 @@ class KeggGraph():
         self.input_data = input_data
         self.type = type
         self.unique = unique
-        self.protein_group_as_interaction = protein_group_as_interaction
+        self.gene_group_as_interaction = gene_group_as_interaction
         self.multi_substrate_as_interaction = multi_substrate_as_interaction
         self.directed = directed
         self.verbose = verbose
-        self.protein_id_type = 'kegg'
+        self.gene_id_type = 'kegg'
         self.compound_id_type = 'kegg'
 
         self.root = ET.parse(input_data).getroot()
@@ -157,17 +157,21 @@ class KeggGraph():
         return self.edges
 
     @property
-    def proteins(self):
+    def genes(self):
         # create node features
-        return get_unique_proteins(self.edges)
+        return get_unique_genes(self.edges)
 
     @property
     def compounds(self):
         return  get_unique_compound_values(self.edges)
 
     @property
+    def nodes (self):
+        return self.genes + self.compounds
+
+    @property
     def num_nodes(self):
-        return len(self.proteins) + len(self.compounds)
+        return len(self.nodes)
 
     @property
     def num_edges(self):
@@ -177,23 +181,29 @@ class KeggGraph():
     def name(self):
         return self.root.get('name')
 
+    @property
+    def title(self):
+        return self.root.get('title')
+
     def __str__(self):
         # return the title of the graph and the number of nodes and edges
         return (f'''KEGG Pathway: 
-            [Title]: {self.root.get('title')} \n 
-            [Name]: {self.root.get('name')} \n 
-            [Org]: {self.root.get('org')} \n 
-            [Link]: {self.root.get('link')} \n 
-            [Image]: {self.root.get('image')} \n 
-            [Link]: {self.root.get('link')} \n 
-            Graph type: {self.type} \n
-            Number of Proteins: {len(self.proteins)} \n
-            Number of Compounds: {len(self.compounds)} \n
-            Protein ID type : {self.protein_id_type} \n
-            Compound ID type : {self.compound_id_type} \n
-            Number of Nodes: {self.num_nodes} \n 
+            [Title]: {self.root.get('title')}
+            [Name]: {self.root.get('name')}
+            [Org]: {self.root.get('org')}
+            [Link]: {self.root.get('link')}
+            [Image]: {self.root.get('image')}
+            [Link]: {self.root.get('link')}
+            Graph type: {self.type} 
+            Number of Genes: {len(self.genes)}
+            Number of Compounds: {len(self.compounds)}
+            Gene ID type : {self.gene_id_type}
+            Compound ID type : {self.compound_id_type}
+            Number of Nodes: {self.num_nodes}
             Number of Edges: {self.num_edges}''')
 
+    def __repr__(self):
+        return self.__str__()
 
     def convert_entry_id_to_kegg_id(self, df: pd.DataFrame) -> pd.DataFrame:
         # convert compound value to kegg id if only relation.type is "compound"
@@ -304,7 +314,7 @@ class KeggGraph():
         df['entry2'] =   [group_id_dict[entry]  if entry in group_id_dict else entry for entry in df['entry2']]
         df = df.explode('entry1').explode('entry2')
         # toggle group-clique
-        if self.protein_group_as_interaction:
+        if self.gene_group_as_interaction:
             df = pd.concat([df, clique_edges])
         # remove row with entry1_type="group" and entry2_type="group"
         df = df[~((df['entry1_type'] == 'group') | (df['entry2_type'] == 'group'))]
@@ -439,15 +449,16 @@ class KeggGraph():
         '''
         Convert the graph to networkx
         '''
-        G = nx.from_pandas_edgelist(self.edges,
-                                    source='entry1', target='entry2', edge_attr=['type',  'subtype_name', 'subtype_value', 'entry1_type', 'entry2_type',], create_using=nx.DiGraph())
-
+        edges = self.edges.rename(columns={'type': 'edge_type', 'subtype_name': 'edge_subtype_name', 'subtype_value': 'edge_subtype_value'})
+        G = nx.from_pandas_edgelist(edges,
+                                    source='entry1', target='entry2', edge_attr=['edge_type',  'edge_subtype_name',  'entry1_type', 'entry2_type'], create_using=nx.DiGraph())
+        G.graph['name'] = self.name
         # set node attribute
         # create dict with key in self.proteins and value as "gene"
 
         # create dict with key in self.molecules and value as "compound"
         # combine the two dictionaries
-        node_attributes = {**{protein: 'gene' for protein in self.proteins},
+        node_attributes = {**{protein: 'gene' for protein in self.genes},
                            **{molecule: 'compound' for molecule in self.compounds}}
         nx.set_node_attributes(G, node_attributes, name='node_type')
 
@@ -466,47 +477,3 @@ class KeggGraph():
         '''
         # if indirection is "undirected", add the reverse edge
         return pd.concat([self.edges, self.edges[self.edges['direction'] == 'undirected'].rename(columns={'entry1': 'entry2', 'entry2': 'entry1'})])
-
-
-    #
-    # def load_edge_csv(self, data: pd.DataFrame, protein_mapping:dict, mol_mapping:str):
-    #
-    #     # for df_pc if entry2 is a protein, swap entry1 and entry2
-    #     # todo: find a more elegant way to do this
-    #     # add it to parser function
-    #     # this will remove direction information while it is impossible to get direction from the KGML file
-    #     data.loc[(data['type'] == 'PCrel') & (data['entry2_type'] == 'gene'), ['entry1', 'entry2']] = df.loc[(df['type'] == 'PCrel') & (df['entry2'].str.startswith('up')), ['entry2', 'entry1']].values
-    #
-    #
-    # # Remove rows with entry1 or entry2 not in the mapping
-    # mapping_keys = list(protein_mapping.keys()) + list(mol_mapping.keys())
-    #
-    # # remove prefix from entry1 and entry2
-    # df['entry1'] = df['entry1'].str.replace(r'^[^:]+:', '', regex=True)
-    # df['entry2'] = df['entry2'].str.replace(r'^[^:]+:', '', regex=True)
-    #
-    # # remove rows with entry1 or entry2 not in the mapping
-    # df = df[df['entry1'].isin(mapping_keys) & df['entry2'].isin(mapping_keys)]
-    #
-    #
-    # # split df into two parts: one for protein-protein edges and the other for protein-compound edges
-    # # the PP edges will have type "PPrel"
-    # # the PC edges will have type "PCrel"
-    # df_pp = df[df['type'] == 'PPrel']
-    # df_pc = df[df['type'] == 'PCrel']
-    #
-    #
-    # # df_pc edges
-    # pc_src = [protein_mapping[entry] for entry in df_pc['entry1']]
-    # pc_dst = [mol_mapping[entry] for entry in df_pc['entry2']]
-    # pc_index = torch.tensor([pc_src, pc_dst])
-    #
-    # # df_pp edges
-    # pp_src = [protein_mapping[entry] for entry in df_pp['entry1']]
-    # pp_dst = [protein_mapping[entry] for entry in df_pp['entry2']]
-    # pp_index = torch.tensor([pp_src, pp_dst])
-    #
-    # pc_edge_attr = None
-    # pp_edge_attr = None
-    #
-    # return pc_index, pc_edge_attr, pp_index, pp_edge_attr

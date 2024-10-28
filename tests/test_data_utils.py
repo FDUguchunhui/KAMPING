@@ -48,7 +48,7 @@ class TestUtilsWorkWithGraph:
 
     def test_convert_to_pyg_gene_graph(self):
         gene_graph = network.KeggGraph('data/hsa00010.xml', type='gene',
-                                       protein_group_as_interaction=True,
+                                       gene_group_as_interaction=True,
                                        multi_substrate_as_interaction=True)
         self.converter.convert(gene_graph)
         embeddings = get_uniprot_protein_embeddings(gene_graph, 'data/hsa00010_protein_embeddings.h5')
@@ -58,7 +58,7 @@ class TestUtilsWorkWithGraph:
 
     def test_convert_to_pyg_metablite_graph(self):
         metabolite_graph = network.KeggGraph('data/hsa00010.xml', type='metabolite',
-                                             protein_group_as_interaction=True,
+                                             gene_group_as_interaction=True,
                                              multi_substrate_as_interaction=True)
         self.converter.convert(metabolite_graph)
         embeddings = {compound: np.zeros(1024) for compound in metabolite_graph.compounds}
@@ -68,11 +68,11 @@ class TestUtilsWorkWithGraph:
 
     def test_convert_to_hetero_pyg(self):
         mixed_graph = network.KeggGraph('data/hsa00010.xml', type='mixed',
-                                        protein_group_as_interaction=True,
+                                        gene_group_as_interaction=True,
                                         multi_substrate_as_interaction=True)
         self.converter.convert(mixed_graph)
 
-        protein_embeddings = {protein: np.zeros(1024) for protein in mixed_graph.proteins}
+        protein_embeddings = {protein: np.zeros(1024) for protein in mixed_graph.genes}
         mol_embeddings = {compound: np.zeros(1024) for compound in mixed_graph.compounds}
         data = convert_to_hetero_pyg(mixed_graph,
                                      protein_embeddings=protein_embeddings,
@@ -83,14 +83,14 @@ class TestUtilsWorkWithGraph:
 
     def test_combine_graphs(self):
         graph1 = network.KeggGraph('data/hsa00010.xml', type='mixed',
-                                        protein_group_as_interaction=True,
-                                        multi_substrate_as_interaction=True)
+                                   gene_group_as_interaction=True,
+                                   multi_substrate_as_interaction=True)
         graph2 = network.KeggGraph('data/hsa00020.xml', type='mixed',
-                                   protein_group_as_interaction=True,
+                                   gene_group_as_interaction=True,
                                    multi_substrate_as_interaction=True)
         self.converter.convert(graph1)
         self.converter.convert(graph2)
-        protein_embeddings = {protein: np.zeros(1024) for protein in {*graph1.proteins, *graph2.proteins}}
+        protein_embeddings = {protein: np.zeros(1024) for protein in {*graph1.genes, *graph2.genes}}
         mol_embeddings = {compound: np.zeros(1024) for compound in {*graph1.compounds, *graph2.compounds}}
         data1 = convert_to_hetero_pyg(graph1,
                                      protein_embeddings=protein_embeddings,

@@ -1,12 +1,16 @@
+import logging
 import re
 from collections import defaultdict
 import urllib.request as request
+from pathlib import Path
 
 import h5py
 import networkx as nx
 import numpy as np
 import pandas as pd
+import requests
 import torch_geometric.utils, torch_geometric.data
+import typer
 
 
 def entry_id_conv_dict(root, unique=False) -> pd.DataFrame:
@@ -135,7 +139,7 @@ def load_embedding_from_h5(file_path):
     return embeddings
 
 
-def get_unique_proteins(df):
+def get_unique_genes(df) -> list:
     '''
     Get unique values from column entry1 and entry2 combined.
     '''
@@ -146,7 +150,7 @@ def get_unique_proteins(df):
     proteins = pd.concat([entry1_protein, entry2_protein]).unique()
 
     # remove prefix
-    return proteins
+    return list(proteins)
 
 
 def get_group_to_id_mapping(root):
@@ -205,3 +209,53 @@ def get_unique_compound_values(df) -> list:
     compounds = pd.concat([entry1_compound, entry2_compound]).unique().tolist()
 
     return compounds
+
+
+def kgml(species, out_dir, verbose=True):
+    """
+    Acquires all KGML files for a given species from KEGG.
+    
+    Parameters
+    ----------
+    species : str
+        The species to acquire KGML files for.
+    out_dir : Path
+        The directory to save the resulting files.
+
+    Returns None
+
+    Examples
+    --------
+    kgml('hsa', Path('path/to/save/files'))
+    -------
+    """
+    logger = logging.getLogger(__name__)
+    if verbose:
+        logger.setLevel(logging.INFO)
+
+    KEGGorg = 'http://rest.kegg.jp/list/organism'
+    KEGGlist = 'http://rest.kegg.jp/list/pathway/%s'
+    KEGGget = 'http://rest.kegg.jp/get/%s/kgml'
+    response = requests.get(KEGGorg).text.split('\n')
+    org_list = []
+    taxonomy = []
+    # The -1 avoids the last element of the list, which is a dangling newline
+    for i in range(len(response) - 1):
+        org_list.append(response[i].split('\t')[1])
+        taxonomy.append(response[i].split('\t')[2])
+    d = {org_list[i]: taxonomy[i] for i in range(len(taxonomy))}
+    if species not in org_list:
+        logging.warning(f'Please input a species name in KEGG organism ID format.\nThese are usually {len(min(org_list, key = len))} to {len(max(org_list, key = len))} letter codes.\n--Example: "Homo sapiens" is "hsa"')
+    else:
+        logger.info(f'Now acquiring all KGML files for {d[species]}...')
+        response = requests.get(KEGGlist % species).text.split('\n')
+        pathways = [r.split('\t')[0] for r in response if r]
+        for path in pathways:
+            logger.info(f'Now acquiring pathway {path}...')
+            config = Path(out_dir) / '{}.xml'.format(path)
+            paths = requests.get(KEGGget % path).text
+            if config.is_file():
+                pass
+            else:
+                with open(out_dir / '{}.xml'.format(path), 'w') as outfile:
+                    outfile.write(paths)
