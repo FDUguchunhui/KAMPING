@@ -344,8 +344,8 @@ class KeggGraph():
                 # clique parsed as undirected represented by two directed edges
                 clique_edges = pd.concat([clique_edges,
                                          pd.DataFrame.from_records([
-                                             {'entry1': member1, 'entry2': member2, 'type': 'PPrel', 'name': 'protein-group', 'value': 'custom', 'entry1_type': 'gene', 'entry2_type': 'gene'},
-                                             {'entry1': member2, 'entry2': member1, 'type': 'PPrel', 'name': 'protein-group', 'value': 'custom', 'entry1_type': 'gene', 'entry2_type': 'gene'}])])
+                                             {'entry1': member1, 'entry2': member2, 'type': 'PPrel', 'name': 'gene-group', 'value': 'custom', 'entry1_type': 'gene', 'entry2_type': 'gene'},
+                                             {'entry1': member2, 'entry2': member1, 'type': 'PPrel', 'name': 'gene-group', 'value': 'custom', 'entry1_type': 'gene', 'entry2_type': 'gene'}])])
         df['entry1'] =   [group_id_dict[entry]  if entry in group_id_dict else entry for entry in df['entry1']]
         df['entry2'] =   [group_id_dict[entry]  if entry in group_id_dict else entry for entry in df['entry2']]
         df = df.explode('entry1').explode('entry2')

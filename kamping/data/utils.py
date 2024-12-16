@@ -15,7 +15,7 @@ import typer
 from rdkit import Chem as Chem
 
 from kamping.parser.utils import load_embedding_from_h5, get_unique_compound_values
-from kamping.data.convert import from_hetero_networkx
+from kamping.data.convert import from_hetero_networkx, from_networkx
 
 def load_node_h5(file_path: str):
 
@@ -54,7 +54,7 @@ def convert_to_pyg(graph, embeddings, unmatch_embeddings=None, verbose=True) -> 
         # convert the graph to PyG data
         if nx.is_empty(G):
             raise ValueError(f'{graph.name} is empty using giving setting!')
-        data =  pyg.utils.from_networkx(G, group_node_attrs=['embeddings'])
+        data =  from_networkx(G, group_node_attrs=['embeddings'])
     else:
         raise ValueError('Graph type must be "gene" or "metabolite"!')
     # logging succesful convert
@@ -95,22 +95,8 @@ def get_uniprot_protein_embeddings(graphs: Union[Any, List[Any]], embedding_file
         unique_proteins.update(graph.genes)
 
     # get the protein embeddings
-    protein_embeddings = {protein: embeddings[protein.removeprefix('up:')] for protein in unique_proteins if protein.removeprefix('up:') in embeddings.keys()}
+    protein_embeddings = {protein: embeddings[protein.removeprefix('up:')].astype(np.float32) for protein in unique_proteins if protein.removeprefix('up:') in embeddings.keys()}
     return protein_embeddings
-
-
-def combine_graphs(pyg_data: list):
-    '''
-    Given a list of pyg graph data, combine them into one large graph data
-    works for both homogenous and heterogenous graph
-    '''
-    # use update instance function
-    data = copy.copy(pyg_data[0])
-    for i in range(1, len(pyg_data)):
-        data.update(pyg_data[i])
-
-    return data
-
 
 def get_smiles(interaction:pd.DataFrame) -> dict:
     smiles = []
@@ -165,6 +151,7 @@ def get_mol_embeddings_from_dataframe(mols, transformer, dim=1024, **kwargs) -> 
     smiles = mols.dropna(subset=['ROMol'])
     # get the molecular vector
     mol_embeddings = transformer.transform(smiles['ROMol'])
+    mol_embeddings = [mol.astype(np.float32) for mol in mol_embeddings] # convert to float
     mol_embeddings = dict(zip(valid_row_id, mol_embeddings))
     return mol_embeddings
 

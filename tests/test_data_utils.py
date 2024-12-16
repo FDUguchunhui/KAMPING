@@ -80,24 +80,3 @@ class TestUtilsWorkWithGraph:
         print(data)
         assert data is not None
 
-
-    def test_combine_graphs(self):
-        graph1 = network.KeggGraph('data/hsa00010.xml', type='mixed',
-                                   gene_group_as_interaction=True,
-                                   multi_substrate_as_interaction=True)
-        graph2 = network.KeggGraph('data/hsa00020.xml', type='mixed',
-                                   gene_group_as_interaction=True,
-                                   multi_substrate_as_interaction=True)
-        self.converter.convert(graph1)
-        self.converter.convert(graph2)
-        protein_embeddings = {protein: np.zeros(1024) for protein in {*graph1.genes, *graph2.genes}}
-        mol_embeddings = {compound: np.zeros(1024) for compound in {*graph1.compounds, *graph2.compounds}}
-        data1 = convert_to_hetero_pyg(graph1,
-                                     protein_embeddings=protein_embeddings,
-                                     mol_embeddings=mol_embeddings)
-        data2 = convert_to_hetero_pyg(graph2,
-                                       protein_embeddings=protein_embeddings,
-                                       mol_embeddings=mol_embeddings)
-        print(data1)
-        combined = combine_graphs([data1, data2])
-        print(combined)

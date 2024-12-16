@@ -6,6 +6,7 @@ import networkx as nx
 import pandas as pd
 import torch_geometric as pyg
 import kamping
+from kamping import from_hetero_networkx, from_networkx
 
 
 def read_all_tsv_files(directory):
@@ -46,7 +47,7 @@ def create_graphs(directory, type, ignore_file:Union[list, None]=None, verbose=T
     return graphs
 
 
-def get_pyg_graphs(graphs: list, embeddings):
+def convert_to_pyg(graphs: list, embeddings):
     pyg_graphs = []
     for graph in graphs:
         try:
@@ -55,14 +56,14 @@ def get_pyg_graphs(graphs: list, embeddings):
             logging.warning(e)
     return pyg_graphs
 
-def get_pyg_one_graph(graphs, embeddings):
+def convert_to_single_pyg(graphs, embeddings):
     # convert all graphs into networkx graphs
     nx_graphs = [graph.to_networkx() for graph in graphs]
     # compose graphs into one graph
     G = nx.compose_all(nx_graphs)
     G.graph['name'] = 'combined'
     graph_types = list(set([graph.type for graph in graphs]))
-    all_graph_types_equal_single = all(elements in ['gene', 'metabolite'] for elements in graph_types)
+    all_graph_types_equal_single = all(elements == graph_types[0] for elements in graph_types)
     G.graph['type'] = graph_types[0]
     all_proteins = list(set([protein for graph in graphs for protein in graph.genes]))
     all_compounds = list(set([compound for graph in graphs for compound in graph.compounds]))
@@ -78,15 +79,21 @@ def get_pyg_one_graph(graphs, embeddings):
         nx.set_node_attributes(G, embeddings, name='embeddings')
         if graph_types[0] == 'gene':
             node_names = dict(zip(all_proteins, all_proteins))
-        else:
+        if graph_types[0] == 'metabolite':
             node_names = dict(zip(all_compounds, all_compounds))
+        else:
+            node_names = dict(zip(all_proteins + all_compounds, all_proteins + all_compounds))
         nx.set_node_attributes(G, node_names, name='node_name')
         # convert the graph to PyG data
         if nx.is_empty(G):
             raise ValueError(f'Combined graph empty using giving setting!')
-        data =  pyg.utils.from_networkx(G, group_node_attrs=['embeddings'])
+        if G.graph['type'] == 'gene' or G.graph['type'] == 'metabolite':
+            data = from_networkx(G, group_node_attrs=['embeddings'])
+        else:
+            data = from_hetero_networkx(G, node_type_attribute='node_type',
+                                    group_node_attrs=['embeddings'])
     else:
-        raise ValueError('Graph type must be "gene" or "metabolite"!')
+        raise ValueError('Graph type must be "gene", "metabolite", or "mixed"!')
     # logging succesful convert
     logging.info(f'Combined graph converted to torch_geometric successfully')
     return data

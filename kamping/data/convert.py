@@ -1,6 +1,124 @@
 from collections import defaultdict
-from typing import Any, Optional, Iterable, Union, List
+from typing import Any, Optional, Iterable, Union, List, Dict, Literal
 import torch
+from torch import Tensor
+
+
+def from_networkx(
+        G: Any,
+        group_node_attrs: Optional[Union[List[str], Literal['all']]] = None,
+        group_edge_attrs: Optional[Union[List[str], Literal['all']]] = None,
+) -> 'torch_geometric.data.Data':
+    r"""Converts a :obj:`networkx.Graph` or :obj:`networkx.DiGraph` to a
+    :class:`torch_geometric.data.Data` instance.
+
+    Args:
+        G (networkx.Graph or networkx.DiGraph): A networkx graph.
+        group_node_attrs (List[str] or "all", optional): The node attributes to
+            be concatenated and added to :obj:`data.x`. (default: :obj:`None`)
+        group_edge_attrs (List[str] or "all", optional): The edge attributes to
+            be concatenated and added to :obj:`data.edge_attr`.
+            (default: :obj:`None`)
+
+    .. note::
+
+        All :attr:`group_node_attrs` and :attr:`group_edge_attrs` values must
+        be numeric.
+
+    Examples:
+        >>> edge_index = torch.tensor([
+        ...     [0, 1, 1, 2, 2, 3],
+        ...     [1, 0, 2, 1, 3, 2],
+        ... ])
+        >>> data = Data(edge_index=edge_index, num_nodes=4)
+        >>> g = to_networkx(data)
+        >>> # A `Data` object is returned
+        >>> from_networkx(g)
+        Data(edge_index=[2, 6], num_nodes=4)
+    """
+    import networkx as nx
+
+    from torch_geometric.data import Data
+
+    G = G.to_directed() if not nx.is_directed(G) else G
+
+    mapping = dict(zip(G.nodes(), range(G.number_of_nodes())))
+    edge_index = torch.empty((2, G.number_of_edges()), dtype=torch.long)
+    for i, (src, dst) in enumerate(G.edges()):
+        edge_index[0, i] = mapping[src]
+        edge_index[1, i] = mapping[dst]
+
+    data_dict: Dict[str, Any] = defaultdict(list)
+    data_dict['edge_index'] = edge_index
+
+    node_attrs: List[str] = []
+    if G.number_of_nodes() > 0:
+        node_attrs = list(next(iter(G.nodes(data=True)))[-1].keys())
+
+    edge_attrs: List[str] = []
+    if G.number_of_edges() > 0:
+        edge_attrs = list(next(iter(G.edges(data=True)))[-1].keys())
+
+    if group_node_attrs is not None and not isinstance(group_node_attrs, list):
+        group_node_attrs = node_attrs
+
+    if group_edge_attrs is not None and not isinstance(group_edge_attrs, list):
+        group_edge_attrs = edge_attrs
+
+    for i, (_, feat_dict) in enumerate(G.nodes(data=True)):
+        if set(feat_dict.keys()) != set(node_attrs):
+            raise ValueError('Not all nodes contain the same attributes')
+        for key, value in feat_dict.items():
+            data_dict[str(key)].append(value)
+
+    for i, (_, _, feat_dict) in enumerate(G.edges(data=True)):
+        if set(feat_dict.keys()) != set(edge_attrs):
+            raise ValueError('Not all edges contain the same attributes')
+        for key, value in feat_dict.items():
+            key = f'edge_{key}' if key in node_attrs else key
+            data_dict[str(key)].append(value)
+
+    for key, value in G.graph.items():
+        if key == 'node_default' or key == 'edge_default':
+            continue  # Do not load default attributes.
+        key = f'graph_{key}' if key in node_attrs else key
+        data_dict[str(key)] = value
+
+    for key, value in data_dict.items():
+        if isinstance(value, (tuple, list)) and isinstance(value[0], Tensor):
+            data_dict[key] = torch.stack(value, dim=0)
+        else:
+            try:
+                data_dict[key] = torch.as_tensor(value)
+            except Exception:
+                pass
+
+    # data = Data.from_dict(data_dict)
+    data = Data()
+
+    if group_node_attrs is not None:
+        xs = []
+        for key in group_node_attrs:
+            x = data_dict[key]
+            x = x.view(-1, 1) if x.dim() <= 1 else x
+            xs.append(x)
+            # del data[key]
+        data.x = torch.cat(xs, dim=-1)
+
+    if group_edge_attrs is not None:
+        xs = []
+        for key in group_edge_attrs:
+            key = f'edge_{key}' if key in node_attrs else key
+            x = data_dict[key]
+            x = x.view(-1, 1) if x.dim() <= 1 else x
+            xs.append(x)
+            # del data[key]
+        data.edge_attr = torch.cat(xs, dim=-1)
+
+    if data.x is None and data.pos is None:
+        data.num_nodes = G.number_of_nodes()
+
+    return data
 
 
 def from_hetero_networkx(
@@ -8,7 +126,8 @@ def from_hetero_networkx(
         edge_type_attribute: Optional[str] = None,
         graph_attrs: Optional[Iterable[str]] = None, nodes: Optional[List] = None,
         group_node_attrs: Optional[Union[List[str], all]] = None,
-        group_edge_attrs: Optional[Union[List[str], all]] = None
+        group_edge_attrs: Optional[Union[List[str], all]] = None,
+        keep_other_attrs: Optional[bool] = False
 ) -> 'torch_geometric.data.HeteroData':
     r"""Converts a :obj:`networkx.Graph` or :obj:`networkx.DiGraph` to a
     :class:`torch_geometric.data.HeteroData` instance.
@@ -231,5 +350,41 @@ def from_hetero_networkx(
         if node_group in hetero_data_dict:
             for node_attr in group_node_attrs:
                 del hetero_data_dict[node_group][node_attr]
+
+    if not keep_other_attrs:
+        # delete not in group_node_attrs
+        for node_group in group_to_nodes.keys():
+            if node_group in hetero_data_dict:
+                if group_node_attrs is not None:
+                    group_node_attrs = group_node_attrs + ['x']
+                else:
+                    group_node_attrs = ['x']
+                keys_to_delete = [node_attr for node_attr in hetero_data_dict[node_group].keys() if node_attr not in group_node_attrs]
+                for node_attr in keys_to_delete:
+                    del hetero_data_dict[node_group][node_attr]
+
+        # delete not in group_edge_attrs
+        for edge_group in group_to_edges.keys():
+            edge_group_name = '__'.join(edge_group)
+            if edge_group_name in hetero_data_dict:
+                if group_edge_attrs is not None:
+                    group_edge_attrs = group_edge_attrs + ['edge_attr', 'edge_index']
+                else:
+                    group_edge_attrs = ['edge_attr', 'edge_index']
+                keys_to_delete = [edge_attr for edge_attr in hetero_data_dict[edge_group_name].keys() if edge_attr not in group_edge_attrs]
+                for edge_attr in keys_to_delete:
+                    del hetero_data_dict[edge_group_name][edge_attr]
+
+
+    # hetero_data_dict_tensor = {}
+    # # delete value in hetero_data_dict if it is not a tensor
+    # for key, value in hetero_data_dict.items():
+    #     if isinstance(value, dict):
+    #         hetero_data_dict_tensor[key] = {}
+    #         for k, v in value.items():
+    #             if isinstance(v, torch.Tensor):
+    #                 hetero_data_dict_tensor[key][k] = v
+    #     elif isinstance(value, torch.Tensor):
+    #         hetero_data_dict_tensor[key] = value
 
     return HeteroData(**hetero_data_dict)
