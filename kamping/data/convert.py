@@ -105,6 +105,7 @@ def from_networkx(
             # del data[key]
         data.x = torch.cat(xs, dim=-1)
 
+    data.edge_index = data_dict['edge_index']
     if group_edge_attrs is not None:
         xs = []
         for key in group_edge_attrs:
