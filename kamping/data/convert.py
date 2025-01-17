@@ -119,7 +119,7 @@ def from_networkx(
     if data.x is None and data.pos is None:
         data.num_nodes = G.number_of_nodes()
 
-    return data
+    return data, mapping
 
 
 def from_hetero_networkx(
@@ -388,4 +388,15 @@ def from_hetero_networkx(
     #     elif isinstance(value, torch.Tensor):
     #         hetero_data_dict_tensor[key] = value
 
-    return HeteroData(**hetero_data_dict)
+    # Generate mapping dictionary
+    mapping = {}
+    # Iterate over the items of the first dictionary
+    for key, value_type in node_to_group.items():
+        # Get the corresponding value from the second dictionary
+        value = node_to_group_id[key]
+        # Add the value to the new dictionary under the appropriate type
+        if value_type not in mapping:
+            mapping[value_type] = {}
+        mapping[value_type][key] = value
+
+    return HeteroData(**hetero_data_dict), mapping

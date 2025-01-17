@@ -88,12 +88,12 @@ def convert_to_single_pyg(graphs, embeddings):
         if nx.is_empty(G):
             raise ValueError(f'Combined graph empty using giving setting!')
         if G.graph['type'] == 'gene' or G.graph['type'] == 'metabolite':
-            data = from_networkx(G, group_node_attrs=['embeddings'])
+            data, mapping = from_networkx(G, group_node_attrs=['embeddings'])
         else:
-            data = from_hetero_networkx(G, node_type_attribute='node_type',
+            data, mapping = from_hetero_networkx(G, node_type_attribute='node_type',
                                     group_node_attrs=['embeddings'])
     else:
         raise ValueError('Graph type must be "gene", "metabolite", or "mixed"!')
     # logging succesful convert
     logging.info(f'Combined graph converted to torch_geometric successfully')
-    return data
+    return data, mapping
