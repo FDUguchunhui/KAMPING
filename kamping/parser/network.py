@@ -443,51 +443,13 @@ class KeggGraph():
             for key, value in self.embeddings.items():
                 h5file.create_dataset(key, data=value)
 
-
-    # def get_protein_features(self) -> dict:
-    #     '''
-    #     Get the protein features
-    #     '''
-    #     if self.id_converter is None or self.id_converter.target != 'uniprot':
-    #         raise ValueError('The target must be set to uniprot')
-    #
-    #     proteins = get_unique_proteins(self.edges)
-    #     # when 500 error the server is down
-    #     try:
-    #         job_id = submit_id_mapping(
-    #             from_db="UniProtKB_AC-ID", to_db="UniProtKB", ids=proteins
-    #         )
-    #     except requests.exceptions.HTTPError as e:
-    #         typer.echo(typer.style(f'Error when submitting job: {e}. '
-    #                                f'Please https://www.uniprot.org/id-mapping see if server is down.', fg=typer.colors.RED, bold=True))
-    #         raise e
-    #
-    #     if check_id_mapping_results_ready(job_id):
-    #         link = get_id_mapping_results_link(job_id)
-    #     results = get_id_mapping_results_search(link)
-    #
-    #     queries = []
-    #     sequences = []
-    #
-    #     # logging failed ids
-    #     if 'failedIds' in results:
-    #         logging.warning(results['failedIds'])
-    #     for result in results['results']:
-    #         queries.append(result['from'])
-    #         # code below return None if the key is not found
-    #         sequence = result.get('to', {}).get('sequence', {}).get('value', '')
-    #         sequences.append(sequence)
-    #
-    #     self.protein_features = dict(zip(queries, sequences))
-
-
     def to_networkx(self) -> nx.DiGraph:
         '''
         Convert the graph to networkx
         '''
-        edges = self.edges.rename(columns={'type': 'edge_type', 'subtype_name': 'edge_subtype_name', 'subtype_value': 'edge_subtype_value'})
-        G = nx.from_pandas_edgelist(edges,
-                                    source='entry1', target='entry2', edge_attr=['edge_type',  'edge_subtype_name',  'entry1_type', 'entry2_type'], create_using=nx.DiGraph())
+        # edges = self.edges.rename(columns={'type': 'edge_type', 'subtype_name': 'edge_subtype_name', 'subtype_value': 'edge_subtype_value'})
+        G = nx.from_pandas_edgelist(self.edges,
+                                    source='entry1', target='entry2', edge_attr=['type',  'subtype_name', 'subtype_value',  'entry1_type', 'entry2_type'], create_using=nx.DiGraph())
         G.graph['name'] = self.name
         # set node attribute
         # create dict with key in self.proteins and value as "gene"
@@ -513,3 +475,9 @@ class KeggGraph():
         '''
         # if indirection is "undirected", add the reverse edge
         return pd.concat([self.edges, self.edges[self.edges['direction'] == 'undirected'].rename(columns={'entry1': 'entry2', 'entry2': 'entry1'})])
+
+    def add_edges(self, df: pd.DataFrame) -> pd.DataFrame:
+        '''
+        Add edges to the existing edges
+        '''
+        return pd.concat([self.edges, df])
