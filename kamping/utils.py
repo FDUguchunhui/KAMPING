@@ -100,3 +100,18 @@ def convert_to_single_pyg(graphs, embeddings, additional_edges=None):
     # logging succesful convert
     logging.info(f'Combined graph converted to torch_geometric successfully')
     return data, mapping
+
+
+
+def mapping(keys, dictionary: Union[pd.DataFrame, dict], na_rm=False):
+    dictionary = pd.DataFrame(dictionary)
+
+    if dictionary.iloc[:, 0].duplicated().any():
+        raise ValueError("Non-unique keys in dictionary: the same key can be mapped to multiple values")
+
+    values = pd.Series(keys).map(dictionary.set_index(dictionary.columns[0])[dictionary.columns[1]])
+
+    if na_rm:
+        values = values.dropna()
+
+    return values.tolist()

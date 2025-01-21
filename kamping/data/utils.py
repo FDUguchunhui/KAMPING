@@ -127,7 +127,7 @@ def get_kegg_mol(graphs: Union[Any, list[Any]]) -> pd.DataFrame:
     mols = get_molecule(unique_compounds, mol_column='ROMol')
     return mols
 
-def get_mol_embeddings_from_dataframe(mols, transformer, dim=1024, **kwargs) -> dict[str, np.array]:
+def get_mol_embeddings_from_dataframe(mols, transformer, dim=1024, embedding_type=np.float32, **kwargs) -> dict[str, np.array]:
     if transformer == 'morgan':
         transformer = scikit_mol.fingerprints.MorganFingerprintTransformer(nBits=dim, **kwargs)
     elif transformer == 'rdkit':
@@ -143,16 +143,17 @@ def get_mol_embeddings_from_dataframe(mols, transformer, dim=1024, **kwargs) -> 
     valid_row_id = mols.loc[~mols['ROMol'].isna(), 'id'].tolist()
     unvalid_row_id = mols.loc[mols['ROMol'].isna(), 'id'].tolist()
 
+    smiles = mols.dropna(subset=['ROMol'])
+    # get the molecular vector
+    mol_embeddings = transformer.transform(smiles['ROMol'])
+    mol_embeddings = [mol.astype(embedding_type) for mol in mol_embeddings] # convert to float
+    mol_embeddings = dict(zip(valid_row_id, mol_embeddings))
+
     logging.warning(f'''Successfully parse {len(mols) - len(unvalid_row_id)} rows with valid SMILES from the MOL file!\n'
                     total {len(unvalid_row_id)} Invalid rows with "None" in the ROMol column''')
     if not unvalid_row_id:
         logging.warning(f' {unvalid_row_id}, removed from the final output!')
 
-    smiles = mols.dropna(subset=['ROMol'])
-    # get the molecular vector
-    mol_embeddings = transformer.transform(smiles['ROMol'])
-    mol_embeddings = [mol.astype(np.float32) for mol in mol_embeddings] # convert to float
-    mol_embeddings = dict(zip(valid_row_id, mol_embeddings))
     return mol_embeddings
 
 
