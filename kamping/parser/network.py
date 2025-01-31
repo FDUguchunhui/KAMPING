@@ -320,6 +320,8 @@ class KeggGraph():
             self.edges.loc[(self.edges['entry1_type'] == 'gene') & (self.edges['entry2_type'] == 'compound') & (self.edges['type'] != 'PCrel'), 'type'] = 'PCrel'
             # when entry1_type == "compound" and entry2_type == "gene" and type != "PCrel" then type = "PCrel"
             self.edges.loc[(self.edges['entry1_type'] == 'compound') & (self.edges['entry2_type'] == 'gene') & (self.edges['type'] != 'PCrel'), 'type'] = 'PCrel'
+            # when entry1_type == "compound" and entry2_type == "compound" and type != "CCrel" then type = "CCrel"
+            self.edges.loc[(self.edges['entry1_type'] == 'compound') & (self.edges['entry2_type'] == 'compound') & (self.edges['type'] != 'CCrel'), 'type'] = 'CCrel'
 
         elif self.auto_correction == 'remove':
             # when entry1_type == "gene" and entry2_type == "gene" and type != "PPrel" or "GErel" then type = "PPrel"

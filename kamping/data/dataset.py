@@ -1,14 +1,10 @@
 import os
 
 import h5py
-import networkx as nx
 import numpy as np
 import pandas as pd
 import torch
-from torch_geometric.data import InMemoryDataset
-
-from kamping import from_hetero_networkx
-
+from torch_geometric.data import InMemoryDataset, HeteroData
 
 class MetaboliteProteinInteraction(InMemoryDataset):
     def __init__(self, root, transform=None, pre_transform=None):
@@ -17,18 +13,19 @@ class MetaboliteProteinInteraction(InMemoryDataset):
 
     @property
     def raw_file_names(self):
-        return ['9606.protein_chemical_translated.links.v5.0.tsv',
-                '9606.protein.links.v12.0_translated.csv',
+        return ['9606.protein.links.v12.0_translated.csv',
+                '9606.protein_chemical.links.v5.0.filtered.tsv',
+                # 'chemical_chemical.links.detailed.v5.0.tsv.'
                 'protein_embeddings.h5',
-                'compound_embeddings.h5']
+                'compound_embeddings_PCA.h5']
 
     @property
     def processed_file_names(self):
         return ['data.pt']
 
     def download(self):
-        raise NotImplementedError('Data download not supported.'
-                                  'please make sure following files are in the raw_dir: ', self.raw_file_names)
+        raise NotImplementedError('Data download not supported. '
+                                  'Please make sure the following files are in the raw_dir: ', self.raw_file_names)
 
     def process(self):
         data = self.process_data(self.raw_dir, self.raw_file_names)
@@ -39,49 +36,55 @@ class MetaboliteProteinInteraction(InMemoryDataset):
         if self.pre_transform is not None:
             data_list = [self.pre_transform(data) for data in data_list]
 
-
-        # combine list of data into a big data object
         data, slices = self.collate(data_list)
         torch.save((data, slices), self.processed_paths[0])
 
     def process_data(self, raw_dir, raw_file_names):
-        ppi = pd.read_csv(os.path.join(raw_dir, raw_file_names[0]), sep='\t', usecols=[0, 1])
+        # if name contain tsv, read as tsv, else read as csv
+        if 'tsv' in raw_file_names[0]:
+            ppi = pd.read_csv(os.path.join(raw_dir, raw_file_names[1]), sep='\t', usecols=[0, 1])
+        else:
+            ppi = pd.read_csv(os.path.join(raw_dir, raw_file_names[0]), usecols=[0, 1])
         ppi.columns = ['source', 'target']
-        proteins = set(ppi.iloc[:, 0].tolist() + ppi.iloc[:, 1].tolist())
+        proteins = set(ppi['source']).union(ppi['target'])
 
-        mpi = pd.read_csv(os.path.join(raw_dir, raw_file_names[1]), usecols=[0, 1])
+        if 'tsv' in raw_file_names[1]:
+            mpi = pd.read_csv(os.path.join(raw_dir, raw_file_names[1]), sep='\t', usecols=[0, 1])
+        else:
+            mpi = pd.read_csv(os.path.join(raw_dir, raw_file_names[1]), usecols=[0, 1])
         mpi.columns = ['source', 'target']
-        compounds = set(mpi.iloc[:, 0].tolist())
-        # combined two dataframes
-        edges = pd.concat([ppi, mpi], ignore_index=True)
+        compounds = set(mpi['source'])
 
-        G = nx.from_pandas_edgelist(edges,
-                                    source='source', target='target', create_using=nx.DiGraph())
-
-        node_attributes = {**{protein: 'gene' for protein in proteins},
-                           **{compound: 'compound' for compound in compounds}}
-
-
-        # load embeddings
         protein_embeddings = load_embedding_from_h5(os.path.join(raw_dir, raw_file_names[2]))
         compound_embeddings = load_embedding_from_h5(os.path.join(raw_dir, raw_file_names[3]))
 
-        embeddings = {**protein_embeddings, **compound_embeddings}
-        node_without_embedding = [node for node in G.nodes if node not in embeddings.keys()]
-        if node_without_embedding:
-            G.remove_nodes_from(node_without_embedding)
+        proteins = list(proteins.intersection(protein_embeddings.keys()))
+        compounds = list(compounds.intersection(compound_embeddings.keys()))
 
-        nx.set_node_attributes(G, node_attributes, name='node_type')
-        nx.set_node_attributes(G, embeddings, name='embeddings')
-        data, mapping = from_hetero_networkx(G, node_type_attribute='node_type',
-                                             group_node_attrs=['embeddings'])
+        data = HeteroData()
+
+        # Add nodes and their features
+        data['gene'].x = torch.tensor([protein_embeddings[node] for node in proteins if node in protein_embeddings], dtype=torch.float)
+        data['compound'].x = torch.tensor([compound_embeddings[node] for node in compounds if node in compound_embeddings], dtype=torch.float)
+
+        # Add edges
+        protein_indices = {node: i for i, node in enumerate(proteins)}
+        compound_indices = {node: i for i, node in enumerate(compounds)}
+
+        # create edge index in tensor form [2, num_edges] i.e. [[source], [target]]
+        edge_index_protein = torch.tensor([[protein_indices[row['source']], protein_indices[row['target']]] for _, row in ppi.iterrows() if row['source'] in protein_indices and row['target'] in protein_indices], dtype=torch.long).t().contiguous()
+        edge_index_compound = torch.tensor([[compound_indices[row['source']], protein_indices[row['target']]] for _, row in mpi.iterrows() if row['source'] in compound_indices and row['target'] in protein_indices], dtype=torch.long).t().contiguous()
+
+        data['gene', 'to', 'gene'].edge_index = edge_index_protein
+        data['compound', 'to', 'gene'].edge_index = edge_index_compound
+
+        mapping = {'gene': protein_indices, 'compound': compound_indices}
+        # save the mapping to root
+        torch.save(mapping, os.path.join(self.root, 'mapping.pt'))
+
         return data
 
-
 def load_embedding_from_h5(file_path):
-    '''
-    Load the embedding from a h5 file
-        '''
     with h5py.File(file_path, 'r') as h5file:
         embeddings = {key: value[()] for key, value in h5file.items()}
     return embeddings

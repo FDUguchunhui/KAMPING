@@ -127,7 +127,7 @@ def get_kegg_mol(graphs: Union[Any, list[Any]]) -> pd.DataFrame:
     mols = get_molecule(unique_compounds, mol_column='ROMol')
     return mols
 
-def get_mol_embeddings_from_dataframe(mols, transformer, dim=1024, embedding_type=np.float32, **kwargs) -> dict[str, np.array]:
+def get_mol_embeddings_from_dataframe(mols, transformer, dim=1024, dtype=np.float32, **kwargs) -> dict[str, np.array]:
     if transformer == 'morgan':
         transformer = scikit_mol.fingerprints.MorganFingerprintTransformer(nBits=dim, **kwargs)
     elif transformer == 'rdkit':
@@ -146,7 +146,7 @@ def get_mol_embeddings_from_dataframe(mols, transformer, dim=1024, embedding_typ
     smiles = mols.dropna(subset=['ROMol'])
     # get the molecular vector
     mol_embeddings = transformer.transform(smiles['ROMol'])
-    mol_embeddings = [mol.astype(embedding_type) for mol in mol_embeddings] # convert to float
+    mol_embeddings = [mol.astype(dtype) for mol in mol_embeddings] # convert to float
     mol_embeddings = dict(zip(valid_row_id, mol_embeddings))
 
     logging.warning(f'''Successfully parse {len(mols) - len(unvalid_row_id)} rows with valid SMILES from the MOL file!\n'
