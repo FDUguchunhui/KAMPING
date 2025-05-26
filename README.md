@@ -1,57 +1,111 @@
-# KEGG automated metabolite protein interaction network for graph-model (KAMPING)
+# KAMPING (KEGG Automated Metabolite Protein Interaction Network for Graph-model)
 
-## Introduction
+KAMPING is a powerful Python library for analyzing and modeling KEGG pathway data using graph neural networks. It provides tools for downloading, processing, and analyzing KEGG pathway data, with a focus on metabolite-protein interactions.
 
-KEGG features five types of relations: `PPrel`, `GErel`, `PCrel`, `ECrel`, and 
-`maplink`. The following figure shows the relation types and their corresponding descriptions.
-![img.png](figures/relation_type.png)
+## Features
 
-Of the five relation types, `ECrel` and `PCrel` describe protein-metabolite interactions. The two entries of `ECrel` 
-are two protein (enzyme) entries, with the `value` of the relation being the metabolite entry, it can be `glycan` or 
-`compound` (e.g. cpd:C05378 gl:G00037). 
+- Download and parse KEGG KGML files
+- Create and manipulate KEGG pathway graphs
+- Support for different graph types:
+  - Mixed graphs (genes and metabolites)
+  - Gene-only graphs
+  - Metabolite-only graphs
+- Graph neural network models for pathway analysis
+- Protein and metabolite embedding processing
+- Heterogeneous graph neural network support
 
-```angular2html
-entry1    entry2	type	value	name
-hsa:130589	hsa:2538	ECrel	cpd:C00267-90	compound
+## Installation
+
+KAMPING can be installed using Poetry:
+
+```bash
+# Clone the repository
+git clone https://github.com/FDUguchunhui/KAMPING.git
+cd KAMPING
+
+# Install dependencies using Poetry
+poetry install
+
+# manually insall torch
+pip install torch
 ```
 
+## Basic Usage
 
+### 1. Downloading KEGG KGML Files
 
-The first entry of `PCrel` is a `compound` entry, and the second entry is a `protein` entry. The `name` and `value` 
-of the relation represent the effect of this compound on the protein. The `name` can be `activation`, `inhibition`.
+```python
+import kamping
 
-```
-entry1    entry2	type	value	name
-cpd:C15493-60	hsa:6258	PCrel,PCrel	-->,+p	activation,phosphorylation
-```
-
-Due to data parsing, there can be more than one relation between two entries. For example, the following entry has two
-the `value` and `name`, the `value` and `name` are separated by a comma.
-
-## Metabolite-protein interaction relation:
-
-We can process `ECrel` relation by expanding it into two binary relation (A-B), also called SIF (simple interaction
-format) in BioPAX standard, with first relation with original entry1 as the new entry1 and metabolite as the new
-entry2 in the first new relation. Likewise, the second new relation has the original entry2 as the new entry1 and the
-metabolite as the new entry2.
-
-```angular2html
-entry1    entry2	type	value	name
-hsa:130589  cpd:C00267-90 ECrel compound compound
-hsa:2538 cpd:C00267-90  ECrel compound compound
-# todo: havn't decide the value and name after expanding
+# Download KGML files for a specific species (e.g., human - 'hsa')
+kamping.kgml('hsa', out_dir='data/kgml_hsa', verbose=True)
 ```
 
-## Code
+### 2. Creating a KEGG Graph
 
+```python
+# Create a mixed graph from a KGML file
+mixed_graph = kamping.KeggGraph(
+    'data/kgml_hsa/hsa00010.xml',
+    type='mixed',
+    gene_group_as_interaction=False,
+    multi_substrate_as_interaction=False,
+    auto_correction='fix',
+    directed=True
+)
 
-
-After retrieve all relation in an kegg pathway
+# Access graph nodes and edges
+print(mixed_graph.nodes)
+print(mixed_graph.edges)
 ```
-knext mpi --input data/kegg/hsa-ecrel-expanded.txt --output data/kegg/hsa-ecrel-expanded-mpi.txt
+
+### 3. Working with Different Graph Types
+
+```python
+# Create a gene-only graph
+gene_graph = kamping.KeggGraph('data/kgml_hsa/hsa00010.xml', type='gene')
+
+# Create a metabolite-only graph
+metabolite_graph = kamping.KeggGraph('data/kgml_hsa/hsa00010.xml', type='metabolite')
 ```
 
+## Tutorials
 
-![img.png](figures/img.png)
+The project includes several tutorials to help you get started:
 
+1. Introduction and Basic Usage
+2. Homogeneous Graph Neural Network Model
+3. Protein Embedding Processing
+4. Heterogeneous Graph Neural Network
+5. Metabolite Embedding Processing
 
+## Dependencies
+
+- Python 3.10+
+- NetworkX
+- PyTorch
+- PyTorch Geometric
+- RDKit
+- scikit-mol
+- pandas
+- numpy
+- matplotlib
+- and more (see pyproject.toml for complete list)
+
+## License
+
+This project is licensed under the terms of the included LICENSE file.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## Citation
+
+If you use KAMPING in your research, please cite:
+
+[Citation information to be added]
+
+## Contact
+
+For questions and support, please open an issue on the GitHub repository or contact Chunhui Gu (cgu3@mdanderson.org). 

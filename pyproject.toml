@@ -1,54 +1,56 @@
-[tool.poetry]
+[project]
 name = "kamping"
-version = "0.1"
+version = "0.1.0"
 description = "KEGG automated metabolite protein interaction network for graph-model (KAMPING)"
-authors = ["Chunhui Gu <cgu3@mdanderson.org>"]
 readme = "README.md"
-license = "LICENSE"
-packages = [
-    { include = "kamping", from = "." }
+license = { file = "LICENSE" }
+authors = [
+  { name = "Chunhui Gu", email = "cgu3@mdanderson.org" }
+]
+requires-python = ">=3.10, <4.0"
+dependencies = [
+  "networkx>=3.1",
+  "click>=8.1.3",
+  "pandas",
+  "requests>=2.31.0",
+  "pathlib>=1.0.1",
+  "scikit-mol>=0.3.1",
+  "rdkit>=2024.3.5",
+  "numpy",
+  "torch-geometric>=2.6.1",
+  "h5py>=3.12.1",
+  "type-extensions>=0.1.2",
+  "typer>=0.12.5",
+  "matplotlib",
+  "scikit-learn>=1.6.0"
 ]
 
-[tool.poetry.scripts]
+[project.optional-dependencies]
+notebook = [
+  "jupyter>=1.1.1",
+  "qtconsole>=5.6.0",
+  "importlib>=1.0.4",
+  "unipressed>=1.4.0"
+]
+
+[project.scripts]
 KAMPING = "kamping.main:cli"
 
-[tool.poetry.dependencies]
-python = "^3.10"
-networkx = "^3.1"
-click = "^8.1.3"
-pandas = "*"
-requests = "^2.31.0"
-pathlib = "^1.0.1"
-scikit-mol = "^0.3.1"
-rdkit = "^2024.3.5"
-numpy = "*"
-torch-geometric = "^2.6.1"
-torch = "^2.5.0"
-h5py = "^3.12.1"
-type-extensions = "^0.1.2"
-typer = "^0.12.5"
-matplotlib = "*"
-unipressed = {version = "^1.4.0", optional = true}
-importlib = {version="^1.0.4", optional=true}
-qtconsole = {version="^5.6.0", optional=true}
-jupyter = {version="^1.1.1", optional=true}
-scikit-learn = "^1.6.0"
+[project.urls]
+Homepage = "https://github.com/FDUguchunhui/KAMPING"
+BugTracker = "https://github.com/FDUguchunhui/KAMPING/issues"
+Source = "https://github.com/FDUguchunhui/KAMPING"
+
+[tool.poetry]
+packages = [
+  { include = "kamping", from = "." }
+]
 
 [tool.poetry.group.tests.dependencies]
 pytest = "^7.1.3"
 snapshottest = "^0.6.0"
 
-[tool.poetry.group.visualization.dependencies]
-pygraphviz = "^1.14"
-
-[tool.poetry.extras]
-notebook = ["jupyter", "qtconsole", "importlib", "unipressed"]
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
-
-[project.urls]
-"Homepage" = "https://github.com/FDUguchunhui/KAMPING"
-"Bug Tracker" = "https://github.com/FDUguchunhui/KAMPING/issues"
-"Source" = "https://github.com/FDUguchunhui/KAMPING"

@@ -1,3 +1,4 @@
 data/*
-.idea
-documents
+.idea/
+documents/
+.venv/
