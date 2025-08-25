@@ -56,11 +56,15 @@ def convert_to_pyg(graphs: list, embeddings):
             logging.warning(e)
     return pyg_graphs
 
-def convert_to_single_pyg(graphs, embeddings, additional_edges=None):
+def convert_to_single_pyg(graphs, embeddings, additional_edges=None, remove_edges=None):
     # convert all graphs into networkx graphs
     nx_graphs = [graph.to_networkx() for graph in graphs]
     # compose graphs into one graph
     G = nx.compose_all(nx_graphs)
+    # remove edges
+    if remove_edges:
+        # remove edges with the edge attribute type in remove_edges
+        G.remove_edges_from([(u, v) for u, v, d in G.edges(data=True) if d['type'] in remove_edges])
     # add additional edges
     if additional_edges:
         G.add_edges_from(additional_edges)
